@@ -51,6 +51,8 @@ Pour déployer via GitHub → Render :
 5. Ajouter les variables d'environnement (`DISCORD_BOT_TOKEN`, `GROQ_API_KEY`, `BOT_MODE`, etc.) dans les settings Render
 6. `PORT` est fourni automatiquement par Render
 
+La racine de l'URL Render affiche une page d'aide expliquant comment changer `BOT_MODE`.
+
 ## User preferences
 
 _Populate as you build — explicit user instructions worth remembering across sessions._
