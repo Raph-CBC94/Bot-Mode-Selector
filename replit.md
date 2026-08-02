@@ -59,6 +59,18 @@ Pour déployer via GitHub → Render :
 
 La racine de l'URL Render affiche une page d'aide expliquant comment changer `BOT_MODE`.
 
+## Commande Discord de changement de mode
+
+Dans le salon défini par `ALLOWED_CHANNEL_ID`, un administrateur peut changer le mode sans repasser par Render :
+
+- `!mode` — affiche le mode actuel et les modes disponibles
+- `!mode insulte`
+- `!mode suceur`
+- `!mode vantard`
+- `!mode adulte`
+
+Le changement est immédiat en mémoire et reste actif jusqu'au prochain redémarrage. Après un redémarrage, la valeur `BOT_MODE` configurée dans Render est utilisée.
+
 ## User preferences
 
 _Populate as you build — explicit user instructions worth remembering across sessions._
@@ -68,4 +80,4 @@ _Populate as you build — explicit user instructions worth remembering across s
 - Ne jamais appeler `pnpm dev` à la racine — passer par les workflows Replit
 - Le bot ne démarre pas si `DISCORD_BOT_TOKEN` ou `ALLOWED_CHANNEL_ID` est absent (warning loggé, pas de crash)
 - Si toutes les clés Groq sont rate-limitées, le bot utilise des fallbacks locaux (pas d'arrêt)
-- `BOT_MODE` est lu au démarrage du bot — changer la variable nécessite un redémarrage
+- `BOT_MODE` est utilisé au démarrage du bot ; un administrateur peut ensuite le remplacer temporairement avec `!mode <mode>` jusqu'au prochain redémarrage

@@ -86,6 +86,7 @@ app.get("/", (_req, res) => {
         <code>BOT_MODE=adulte</code>
         <p>Remplace <code>adulte</code> par <code>insulte</code>, <code>suceur</code> ou <code>vantard</code> pour choisir une autre personnalité.</p>
         <p>Le mode adulte reste suggestif et non graphique : pas de contenu sexuel explicite et pas de sexualisation automatique des membres mentionnés.</p>
+        <p>Un administrateur peut aussi changer le mode directement dans le salon autorisé avec <code>!mode adulte</code>. Utilise <code>!mode</code> pour voir le mode actuel et les valeurs disponibles.</p>
       </section>
 
       <section class="step">

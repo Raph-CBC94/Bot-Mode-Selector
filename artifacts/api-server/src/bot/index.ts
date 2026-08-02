@@ -3,6 +3,7 @@ import {
   Events,
   GatewayIntentBits,
   Message,
+  PermissionsBitField,
   TextChannel,
 } from "discord.js";
 import OpenAI from "openai";
@@ -14,12 +15,17 @@ import { logger } from "../lib/logger";
 
 export type BotMode = "insulte" | "suceur" | "vantard" | "adulte";
 
+const BOT_MODES = ["insulte", "suceur", "vantard", "adulte"] as const;
+
+function parseBotMode(raw: string): BotMode | null {
+  const normalized = raw.toLowerCase().trim();
+  return BOT_MODES.includes(normalized as BotMode)
+    ? (normalized as BotMode)
+    : null;
+}
+
 function getBotMode(): BotMode {
-  const raw = (process.env["BOT_MODE"] ?? "insulte").toLowerCase().trim();
-  if (raw === "suceur") return "suceur";
-  if (raw === "vantard") return "vantard";
-  if (raw === "adulte") return "adulte";
-  return "insulte";
+  return parseBotMode(process.env["BOT_MODE"] ?? "insulte") ?? "insulte";
 }
 
 // ──────────────────────────────────────────────
@@ -1830,11 +1836,11 @@ export async function startBot(): Promise<void> {
     );
     return;
   }
-  const mode = getBotMode();
+  let currentMode = getBotMode();
 
   logger.info(
-    { mode, allowedChannelId: allowedChannelId ?? "tous les salons" },
-    `Bot démarré en mode : ${mode.toUpperCase()} 🤖`,
+    { mode: currentMode, allowedChannelId: allowedChannelId ?? "tous les salons" },
+    `Bot démarré en mode : ${currentMode.toUpperCase()} 🤖`,
   );
 
   const groqClients = loadGroqClients();
@@ -1846,7 +1852,7 @@ export async function startBot(): Promise<void> {
   }
 
   logger.info(
-    { count: groqClients.length },
+    { count: groqClients.length, mode: currentMode },
     `${groqClients.length} clé(s) Groq chargée(s)`,
   );
 
@@ -1859,16 +1865,68 @@ export async function startBot(): Promise<void> {
   });
 
   discordClient.once(Events.ClientReady, (c) => {
-    logger.info({ tag: c.user.tag, mode }, "Bot Discord connecté ✅");
+    logger.info({ tag: c.user.tag, mode: currentMode }, "Bot Discord connecté ✅");
   });
 
   discordClient.on(Events.MessageCreate, (message: Message) => {
     if (message.author.bot) return;
     if (allowedChannelId && message.channelId !== allowedChannelId) return;
 
+    const commandParts = message.content.trim().split(/\s+/);
+    const commandName = commandParts[0]?.toLowerCase();
+    if (commandName === "!mode") {
+      if (
+        !message.member?.permissions.has(
+          PermissionsBitField.Flags.Administrator,
+        )
+      ) {
+        void sendReplyReliably(
+          message,
+          "Seuls les administrateurs peuvent changer le mode du bot.",
+        );
+        return;
+      }
+
+      const requestedMode = commandParts[1]?.toLowerCase();
+      if (!requestedMode || requestedMode === "aide" || requestedMode === "help") {
+        void sendReplyReliably(
+          message,
+          `Mode actuel : **${currentMode}**.\nUtilisation : \`!mode <mode>\`\nModes disponibles : ${BOT_MODES.map((entry) => `\`${entry}\``).join(", ")}.`,
+        );
+        return;
+      }
+
+      const nextMode = parseBotMode(requestedMode);
+      if (!nextMode) {
+        void sendReplyReliably(
+          message,
+          `Mode inconnu. Choisis parmi : ${BOT_MODES.map((entry) => `\`${entry}\``).join(", ")}.`,
+        );
+        return;
+      }
+
+      const previousMode = currentMode;
+      currentMode = nextMode;
+      logger.info(
+        {
+          changedBy: message.author.tag,
+          previousMode,
+          currentMode,
+          channelId: message.channelId,
+        },
+        "Mode changé via Discord",
+      );
+      void sendReplyReliably(
+        message,
+        `Mode changé : **${previousMode}** → **${currentMode}**. Le changement est actif immédiatement jusqu'au prochain redémarrage.`,
+      );
+      return;
+    }
+
     const username = message.author.username;
     const channelId = message.channelId;
     const messageContent = replaceDiscordMentions(message);
+    const modeForMessage = currentMode;
 
     enqueueForChannel(channelId, async () => {
       let typingInterval: ReturnType<typeof setInterval> | undefined;
@@ -1891,7 +1949,7 @@ export async function startBot(): Promise<void> {
           groqClients,
           username,
           messageContent,
-          mode,
+          modeForMessage,
           recentConversation,
         );
         await sendReplyReliably(message, finalReply);
