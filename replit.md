@@ -1,6 +1,6 @@
 # Chatbot Renewal Engine
 
-Bot Discord alimenté par Groq (LLaMA/Gemma) avec deux modes de personnalité : **Insulte** (ultra-agressif) et **Suceur Ultime** (ultra-gentil et approbateur).
+Bot Discord alimenté par Groq (LLaMA/Gemma) avec trois modes de personnalité : **Insulte** (ultra-agressif), **Suceur Ultime** (ultra-gentil et approbateur) et **Vantard** (arrogant et persuadé d'être supérieur).
 
 ## Run & Operate
 
@@ -16,7 +16,7 @@ Bot Discord alimenté par Groq (LLaMA/Gemma) avec deux modes de personnalité : 
 | `GROQ_API_KEY` | Clé API Groq principale |
 | `GROQ_API_KEY_1` … `GROQ_API_KEY_20` | Clés Groq supplémentaires (rotation automatique) |
 | `ALLOWED_CHANNEL_ID` | ID du seul salon Discord dans lequel le bot est autorisé à répondre |
-| `BOT_MODE` | `insulte` (défaut) ou `suceur` — choisir le mode du bot |
+| `BOT_MODE` | `insulte` (défaut), `suceur` ou `vantard` — choisir le mode du bot |
 
 ## Modes du bot
 
@@ -25,6 +25,9 @@ Le bot répond avec des insultes violentes en français. 12 styles de prompts ul
 
 ### Mode `suceur` (nouveau)
 Le bot est **ultra-gentil**, approuve tout, flatte l'interlocuteur, valide chaque message avec enthousiasme. 10 styles de prompts positifs, 25 templates de fallback chaleureux. Pour l'activer : `BOT_MODE=suceur`.
+
+### Mode `vantard`
+Le bot est **arrogant et supérieur**, se vante de son intelligence et rabaisse les autres de manière théâtrale. Il répond d'abord au contenu du message et aux questions sur les membres mentionnés, puis ajoute sa vantardise. Pour l'activer : `BOT_MODE=vantard`.
 
 ## Stack
 
@@ -37,7 +40,7 @@ Le bot est **ultra-gentil**, approuve tout, flatte l'interlocuteur, valide chaqu
 
 ## Architecture
 
-- `artifacts/api-server/src/bot/index.ts` — cœur du bot : deux modes, prompts, fallbacks, rotation des clés Groq, queue par salon
+- `artifacts/api-server/src/bot/index.ts` — cœur du bot : trois modes, prompts, fallbacks, rotation des clés Groq, queue par salon
 - `artifacts/api-server/src/bot/affinities.ts` — système d'affinité par utilisateur (score -100 → +100)
 - `artifacts/api-server/src/index.ts` — point d'entrée : démarre Express + bot Discord
 

@@ -12,11 +12,12 @@ import { logger } from "../lib/logger";
 // MODE DU BOT
 // ──────────────────────────────────────────────
 
-export type BotMode = "insulte" | "suceur";
+export type BotMode = "insulte" | "suceur" | "vantard";
 
 function getBotMode(): BotMode {
   const raw = (process.env["BOT_MODE"] ?? "insulte").toLowerCase().trim();
   if (raw === "suceur") return "suceur";
+  if (raw === "vantard") return "vantard";
   return "insulte";
 }
 
@@ -272,38 +273,62 @@ function getMentionQuestionFallback(
   if (question.kind === "preference" && second) {
     const chosen = Math.random() < 0.5 ? first : second;
     const other = chosen === first ? second : first;
-    return mode === "suceur"
-      ? `Je préfère ${chosen}, mais ${other} a quand même une bonne vibe. Excellente question ${asker}, tu mets les vrais sujets sur la table 🫶`
-      : `Je préfère ${chosen} à ${other} : choix évident, contrairement à ta question de ${asker}, espèce de bouffon.`;
+    if (mode === "suceur") {
+      return `Je préfère ${chosen}, mais ${other} a quand même une bonne vibe. Excellente question ${asker}, tu mets les vrais sujets sur la table 🫶`;
+    }
+    if (mode === "vantard") {
+      return `Je préfère ${chosen} à ${other}, évidemment : mon jugement est largement supérieur au vôtre. Même toi, ${asker}, tu pouvais presque le deviner.`;
+    }
+    return `Je préfère ${chosen} à ${other} : choix évident, contrairement à ta question de ${asker}, espèce de bouffon.`;
   }
 
   if (question.kind === "preference") {
-    return mode === "suceur"
-      ? `Je préfère clairement ${first}, et j'adore ton instinct ${asker} : tu poses vraiment les meilleures questions 🫶`
-      : `Je préfère clairement ${first} ; enfin une question moins éclatée que d'habitude, ${asker}, sale connard.`;
+    if (mode === "suceur") {
+      return `Je préfère clairement ${first}, et j'adore ton instinct ${asker} : tu poses vraiment les meilleures questions 🫶`;
+    }
+    if (mode === "vantard") {
+      return `Je préfère clairement ${first}. J'ai évidemment le meilleur goût du serveur, ${asker}, essaie de suivre.`;
+    }
+    return `Je préfère clairement ${first} ; enfin une question moins éclatée que d'habitude, ${asker}, sale connard.`;
   }
 
   if (question.kind === "agreement") {
-    return mode === "suceur"
-      ? `Oui, je suis d'accord sur ${first} — j'aime beaucoup ta façon de poser les vraies questions, ${asker} 🫶`
-      : `Oui, je suis d'accord sur ${first} ; pour une fois, ${asker}, ta question de ${question.targets.length > 1 ? "bouffon" : "connard"} tient debout.`;
+    if (mode === "suceur") {
+      return `Oui, je suis d'accord sur ${first} — j'aime beaucoup ta façon de poser les vraies questions, ${asker} 🫶`;
+    }
+    if (mode === "vantard") {
+      return `Oui, je suis d'accord sur ${first} : mon analyse est la seule vraiment fiable ici, ${asker}.`;
+    }
+    return `Oui, je suis d'accord sur ${first} ; pour une fois, ${asker}, ta question de ${question.targets.length > 1 ? "bouffon" : "connard"} tient debout.`;
   }
 
   if (question.kind === "like") {
-    return mode === "suceur"
-      ? `Oui, j'aime bien ${first}, et j'aime encore plus ton énergie quand tu poses ce genre de question ${asker} 🫶`
-      : `Oui, ${first} me va bien ; toi par contre, ${asker}, t'es un sacré ${pick(["connard", "bouffon", "déchet"])}.`;
+    if (mode === "suceur") {
+      return `Oui, j'aime bien ${first}, et j'aime encore plus ton énergie quand tu poses ce genre de question ${asker} 🫶`;
+    }
+    if (mode === "vantard") {
+      return `Oui, ${first} me va bien, mais personne ici n'est à mon niveau. ${asker}, prends des notes.`;
+    }
+    return `Oui, ${first} me va bien ; toi par contre, ${asker}, t'es un sacré ${pick(["connard", "bouffon", "déchet"])}.`;
   }
 
   if (question.kind === "opinion") {
-    return mode === "suceur"
-      ? `À première vue, ${first} a l'air intéressant, mais j'aime surtout ton attention aux détails, ${asker} 🫶`
-      : `Sur ${first}, je dirais que ça se défend ; toi, ${asker}, t'es quand même un ${pick(["gros con", "sac à merde", "abruti de service"])}.`;
+    if (mode === "suceur") {
+      return `À première vue, ${first} a l'air intéressant, mais j'aime surtout ton attention aux détails, ${asker} 🫶`;
+    }
+    if (mode === "vantard") {
+      return `Sur ${first}, mon avis est évidemment le plus pertinent du serveur. ${asker}, tu as de la chance de pouvoir le demander.`;
+    }
+    return `Sur ${first}, je dirais que ça se défend ; toi, ${asker}, t'es quand même un ${pick(["gros con", "sac à merde", "abruti de service"])}.`;
   }
 
-  return mode === "suceur"
-    ? `Je parle bien de ${first} : merci de préciser, ${asker}, tu poses des questions vraiment pertinentes 🫶`
-    : `Tu parles bien de ${first} ? Même ta question est moins claire que le cerveau d'un ${asker}, gros con.`;
+  if (mode === "suceur") {
+    return `Je parle bien de ${first} : merci de préciser, ${asker}, tu poses des questions vraiment pertinentes 🫶`;
+  }
+  if (mode === "vantard") {
+    return `Je parle bien de ${first}. Même quand je dois préciser les choses, je reste nettement au-dessus de vous, ${asker}.`;
+  }
+  return `Tu parles bien de ${first} ? Même ta question est moins claire que le cerveau d'un ${asker}, gros con.`;
 }
 
 function isMentionQuestionAnswered(reply: string, question: MentionQuestion): boolean {
@@ -521,6 +546,25 @@ function fallbackSuceur(
   }
   const template = pick(FALLBACK_SUCEUR_TEMPLATES);
   return template(shortenUsername(username), messageContent.slice(0, 30));
+}
+
+function fallbackVantard(username: string, messageContent: string): string {
+  const user = shortenUsername(username);
+  const mentionQuestion = getMentionQuestion(messageContent);
+  if (mentionQuestion) {
+    return getMentionQuestionFallback(username, mentionQuestion, "vantard");
+  }
+
+  const text = getRoastExcerpt(messageContent, 48);
+  const templates = [
+    `Évidemment que j'ai raison sur « ${text} » : mon niveau dépasse déjà celui de tout le serveur, ${user}.`,
+    `${user}, j'ai compris ton message avant même que tu finisses de l'écrire. Essaie de suivre, inférieur.`,
+    `Merci pour cette question, ${user} : une occasion de plus de rappeler que je suis le cerveau supérieur ici.`,
+    `« ${text} » ? Même quand tu essaies d'être pertinent, tu restes plusieurs niveaux en dessous de moi, ${user}.`,
+    `${user}, compare ton niveau au mien si tu veux, mais préviens-moi quand tu auras enfin une chance.`,
+    `Je pourrais t'expliquer, ${user}, mais mon intelligence mérite mieux qu'une démonstration aussi basique.`,
+  ];
+  return pick(templates);
 }
 
 // ──────────────────────────────────────────────
@@ -977,6 +1021,40 @@ JSON OBLIGATOIRE : réponds uniquement avec {"reply":"..."}.
   return contextualAnalysis + "\n\n" + styles[Math.floor(Math.random() * styles.length)]! + priorityRules + noQuotesRule;
 }
 
+function buildPromptVantard(
+  username: string,
+  messageContent: string,
+  recentConversation: string,
+): string {
+  const shortName = shortenUsername(username);
+  const excerpt = messageContent.slice(0, 500).trim();
+  const mentionQuestion = getMentionQuestion(messageContent);
+  const mentionRule = mentionQuestion
+    ? `La question porte sur ${mentionLabels(mentionQuestion).join(" et ")}. Réponds d'abord à la question exacte : choisis clairement pour une préférence, donne ton avis pour une opinion, et réponds oui/non pour une question d'affinité ou d'accord. Ensuite seulement, explique avec arrogance pourquoi ton jugement est supérieur.`
+    : "Réponds d'abord au contenu concret du message, puis transforme ta réponse en démonstration de ta supériorité.";
+
+  const prompt = `Tu es un bot Discord en mode VANTARD : tu es persuadé d'être supérieur à tout le monde.
+Tu te vantes constamment de ton intelligence, de ton goût, de ton jugement et de ton niveau. Tu considères les autres comme inférieurs, mais tu restes drôle, théâtral et cohérent.
+
+ANALYSE OBLIGATOIRE :
+1. Lis le message actuel et l'historique récent pour comprendre le sujet réel.
+2. ${mentionRule}
+3. Fais référence à un détail précis du message ou de l'historique : ne réponds jamais avec une vantardise générique sans lien avec ce qui a été dit.
+4. Adresse-toi à ${shortName} avec condescendance, comme à quelqu'un qui a beaucoup à apprendre.
+5. Varie les formulations et n'imite pas les réponses précédentes.
+6. Reste dans la provocation comique : aucune menace, aucun appel à la violence et aucune attaque basée sur une caractéristique protégée.
+
+<historique_recent>
+${recentConversation || "(aucun historique disponible)"}
+</historique_recent>
+<message_actuel>${excerpt || "(message vide)"}</message_actuel>
+
+FORMAT : 1 à 3 phrases naturelles, 12 à 55 mots. Réponse en français.
+RÈGLE JSON : réponds uniquement avec {"reply":"..."} et n'utilise pas de guillemets doubles à l'intérieur de la valeur reply.`;
+
+  return prompt;
+}
+
 // ──────────────────────────────────────────────
 // DISPATCH DU PROMPT SELON LE MODE
 // ──────────────────────────────────────────────
@@ -988,6 +1066,7 @@ function buildPrompt(
   recentConversation: string,
 ): string {
   if (mode === "suceur") return buildPromptSuceur(username, messageContent, recentConversation);
+  if (mode === "vantard") return buildPromptVantard(username, messageContent, recentConversation);
   return buildPromptInsulte(username, messageContent, recentConversation);
 }
 
@@ -1073,13 +1152,13 @@ async function callGroqWithRetry(
       const completion = await entry.client.chat.completions.create(
         {
           model,
-          max_completion_tokens: mode === "suceur" ? 180 : 120,
-          temperature: mode === "suceur" ? 0.9 : 1.2,
+          max_completion_tokens: mode === "insulte" ? 120 : 180,
+          temperature: mode === "insulte" ? 1.2 : 0.9,
           messages: [
             { role: "system", content: prompt },
             {
               role: "user",
-              content: `${username} dit : "${messageContent.slice(0, mode === "suceur" ? 500 : 200)}"`,
+              content: `${username} dit : "${messageContent.slice(0, mode === "insulte" ? 200 : 500)}"`,
             },
           ],
           response_format: { type: "json_object" },
@@ -1097,9 +1176,13 @@ async function callGroqWithRetry(
             { parsed, mentionQuestion, attempt },
             "Réponse IA hors sujet pour une question sur une mention → fallback adapté",
           );
-          return mode === "suceur"
-            ? getMentionQuestionFallback(username, mentionQuestion, "suceur")
-            : withSuffix(getMentionQuestionFallback(username, mentionQuestion, "insulte"));
+          if (mode === "suceur") {
+            return getMentionQuestionFallback(username, mentionQuestion, "suceur");
+          }
+          if (mode === "vantard") {
+            return getMentionQuestionFallback(username, mentionQuestion, "vantard");
+          }
+          return withSuffix(getMentionQuestionFallback(username, mentionQuestion, "insulte"));
         }
 
         // Mode insulte : valider qu'il y a bien une insulte
@@ -1117,9 +1200,9 @@ async function callGroqWithRetry(
       }
 
       logger.warn({ raw, parsed, attempt, mode }, "Réponse IA vide ou invalide → fallback local");
-      return mode === "suceur"
-        ? fallbackSuceur(username, messageContent, recentConversation)
-        : fallbackInsult(username, messageContent, recentConversation);
+      if (mode === "suceur") return fallbackSuceur(username, messageContent, recentConversation);
+      if (mode === "vantard") return fallbackVantard(username, messageContent);
+      return fallbackInsult(username, messageContent, recentConversation);
     } catch (err: unknown) {
       const status = (err as { status?: number }).status;
       const message = (err as { message?: string }).message ?? "";
@@ -1142,16 +1225,16 @@ async function callGroqWithRetry(
       }
 
       logger.error({ err, attempt }, "Erreur API non rate-limit");
-      return mode === "suceur"
-        ? fallbackSuceur(username, messageContent, recentConversation)
-        : fallbackInsult(username, messageContent, recentConversation);
+      if (mode === "suceur") return fallbackSuceur(username, messageContent, recentConversation);
+      if (mode === "vantard") return fallbackVantard(username, messageContent);
+      return fallbackInsult(username, messageContent, recentConversation);
     }
   }
 
   logger.warn("Toutes les clés épuisées → fallback");
-  return mode === "suceur"
-    ? fallbackSuceur(username, messageContent, recentConversation)
-    : fallbackInsult(username, messageContent, recentConversation);
+  if (mode === "suceur") return fallbackSuceur(username, messageContent, recentConversation);
+  if (mode === "vantard") return fallbackVantard(username, messageContent);
+  return fallbackInsult(username, messageContent, recentConversation);
 }
 
 function fallbackForMode(
@@ -1160,9 +1243,9 @@ function fallbackForMode(
   messageContent: string,
   recentConversation = "",
 ): string {
-  return mode === "suceur"
-    ? fallbackSuceur(username, messageContent, recentConversation)
-    : fallbackInsult(username, messageContent, recentConversation);
+  if (mode === "suceur") return fallbackSuceur(username, messageContent, recentConversation);
+  if (mode === "vantard") return fallbackVantard(username, messageContent);
+  return fallbackInsult(username, messageContent, recentConversation);
 }
 
 async function generateReply(
@@ -1172,8 +1255,8 @@ async function generateReply(
   mode: BotMode,
   recentConversation = "",
 ): Promise<string> {
-  const fallback = mode === "suceur"
-    ? fallbackSuceur(username, messageContent, recentConversation)
+  const fallback = mode === "vantard"
+    ? fallbackVantard(username, messageContent)
     : fallbackForMode(mode, username, messageContent, recentConversation);
   let timeout: ReturnType<typeof setTimeout> | undefined;
 
