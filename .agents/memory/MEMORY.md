@@ -1,2 +1,3 @@
 - [Discord reply reliability](discord-reply-reliability.md) — typing activity must be paired with bounded AI fallback and retried Discord sends.
 - [Contextual insult mode](contextual-insult-mode.md) — hard roasts should target the message, vary recent wording, and avoid threats or protected traits.
+- [Discord mention understanding](discord-mention-understanding.md) — resolve member mentions to readable names before interpreting contextual questions.
