@@ -132,11 +132,37 @@ function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]!;
 }
 
-/** Tire 2 insultes différentes aléatoirement */
-function pickTwo(): [string, string] {
-  const a = pick(INSULT_LIST);
-  let b = pick(INSULT_LIST);
-  while (b === a) b = pick(INSULT_LIST);
+// Insultes fortes pour le roast, sans menaces ni formules qui visent la famille
+// ou une caractéristique personnelle plutôt que le message de l'utilisateur.
+const HARD_ROAST_INSULTS = [
+  "Sale enculé",
+  "Gros connard",
+  "Sale fils de pute",
+  "Grosse merde",
+  "Déchet humain",
+  "Raclure de fond de chiotte",
+  "Putain d'ordure",
+  "Sale pourriture",
+  "Sous-merde ambulante",
+  "Enfoiré de première",
+  "Crétin de compétition",
+  "Bouffon intersidéral",
+  "Tête de con",
+  "Parasite de merde",
+  "Bâtard de compétition",
+  "Putain de vermine",
+] as const;
+
+/** Tire 2 insultes fortes, différentes et pas déjà répétées récemment. */
+function pickTwo(recentConversation = ""): [string, string] {
+  const recent = recentConversation.toLocaleLowerCase("fr");
+  const available = HARD_ROAST_INSULTS.filter(
+    (insult) => !recent.includes(insult.toLocaleLowerCase("fr")),
+  );
+  const pool = available.length >= 2 ? available : [...HARD_ROAST_INSULTS];
+  const a = pick([...pool]);
+  let b = pick([...pool]);
+  while (b === a) b = pick([...pool]);
   return [a, b];
 }
 
@@ -178,37 +204,82 @@ function shortenUsername(username: string, maxLen = 12): string {
 
 const FALLBACK_TEMPLATES = [
   (u: string, a: string, b: string, msg: string) =>
-    msg.length > 3 ? `"${msg.slice(0, 18)}" lmao ${a} ${u} ${b.toLowerCase()} tg` : `${a} ${u} ${b.toLowerCase()} btw 🫩✌🏻`,
-  (u: string, a: string, b: string) => `${a} ${u} t'es un gros ${b.toLowerCase()} ferme ta gueule`,
-  (u: string, a: string, b: string) => `ntm ${u} ${a.toLowerCase()} ${b.toLowerCase()} tg`,
-  (u: string, a: string, b: string) => `${a} ${u} sérieusement ${b.toLowerCase()} btw 🫩✌🏻`,
-  (u: string, a: string, b: string) => `vtff ${u} ${a.toLowerCase()} et ${b.toLowerCase()} btw 🫩✌🏻`,
-  (u: string, a: string, b: string) => `ferme ta gueule ${u} ${a.toLowerCase()} de ${b.toLowerCase()}`,
-  (u: string, a: string, b: string) => `lmao ${u} ${a.toLowerCase()} va mourir ${b.toLowerCase()}`,
-  (u: string, a: string, b: string) => `${u} t'es un ${a.toLowerCase()} doublé d'un ${b.toLowerCase()} btw 🫩✌🏻`,
-  (u: string, a: string, b: string) => `lmaooo ${u} gros ${a.toLowerCase()} ${b.toLowerCase()} rentre chez toi`,
-  (u: string, a: string, b: string) => `${u} franchement ${a.toLowerCase()} ${b.toLowerCase()} btw 🫩✌🏻`,
-  (u: string, a: string, b: string) => `on s'en branle ${u} ${a.toLowerCase()} va dormir ${b.toLowerCase()}`,
-  (u: string, a: string, b: string) => `tg ${u} ${a.toLowerCase()} et ${b.toLowerCase()} merci`,
-  (u: string, a: string, b: string) => `${a} ${u} personne t'a rien demandé ${b.toLowerCase()}`,
-  (u: string, a: string, b: string) => `mais ${a.toLowerCase()} ${u} t'es vraiment un ${b.toLowerCase()}`,
-  (u: string, a: string, b: string) => `${u} c'est quoi ce délire ${a.toLowerCase()} ${b.toLowerCase()} btw 🫩✌🏻`,
-  (u: string, a: string, b: string) => `aaah ${u} ${a.toLowerCase()} tg déjà ${b.toLowerCase()}`,
-  (u: string, a: string, b: string) => `${a} et ${b} ${u} va te coucher`,
-  (u: string, a: string, b: string) => `wallah ${u} ${a.toLowerCase()} ${b.toLowerCase()} laisse tomber`,
-  (u: string, a: string, b: string) => `${u} va falloir que tu te taises ${a.toLowerCase()} ${b.toLowerCase()}`,
-  (u: string, a: string, b: string) => `sors de là ${u} ${a.toLowerCase()} ${b.toLowerCase()} btw 🫩✌🏻`,
-  (u: string, a: string, b: string) => `nan mais ${u} ${a.toLowerCase()} t'es vraiment ${b.toLowerCase()} lmao`,
-  (u: string, a: string, b: string) => `${a} ${u} tu m'épuises ${b.toLowerCase()} tg`,
-  (u: string, a: string, b: string) => `oh ${u} ${a.toLowerCase()} ${b.toLowerCase()} va mourir stp`,
-  (u: string, a: string, b: string) => `${u} j'en reviens pas ${a.toLowerCase()} ${b.toLowerCase()}`,
-  (u: string, a: string, b: string) => `ta gueule ${u} ${a.toLowerCase()} ${b.toLowerCase()} fin de la discussion`,
+    msg.length > 3
+      ? `« ${msg.slice(0, 45)} » : même ton idée est ${b.toLowerCase()}, ${u}, quel ${a.toLowerCase()}`
+      : `${u}, ${a.toLowerCase()} et ${b.toLowerCase()}, même ton silence manque de niveau`,
+  (u: string, a: string, b: string, msg: string) =>
+    `${u}, tu transformes « ${msg.slice(0, 34)} » en démonstration de ${a.toLowerCase()} : quel ${b.toLowerCase()}`,
+  (u: string, a: string, b: string, msg: string) =>
+    `Tu voulais dire « ${msg.slice(0, 30)} » ? ${u}, t'es un ${a.toLowerCase()} doublé d'un ${b.toLowerCase()}`,
+  (u: string, a: string, b: string, msg: string) =>
+    `${u}, même pour « ${msg.slice(0, 28)} », il fallait être un ${a.toLowerCase()} pareil ; quel ${b.toLowerCase()}`,
+  (u: string, a: string, b: string, msg: string) =>
+    `« ${msg.slice(0, 32)} » : ${u}, ton raisonnement est ${a.toLowerCase()}, signé le ${b.toLowerCase()}`,
+  (u: string, a: string, b: string) =>
+    `${u}, t'es un ${a.toLowerCase()} avec la finesse d'un ${b.toLowerCase()}, ferme ta gueule`,
+  (u: string, a: string, b: string) =>
+    `Non mais ${u}, quel ${a.toLowerCase()} : même ton arrogance se fait dépasser par ce ${b.toLowerCase()}`,
+  (u: string, a: string, b: string) =>
+    `${u}, ${a.toLowerCase()} de compétition, tu réussis à rendre le silence plus intelligent que toi, ${b.toLowerCase()}`,
+  (u: string, a: string, b: string) =>
+    `Le ${a.toLowerCase()} ${u} a encore parlé : merci pour cette masterclass de ${b.toLowerCase()}`,
+  (u: string, a: string, b: string) =>
+    `${u}, t'es tellement ${a.toLowerCase()} que même ton ${b.toLowerCase()} demande un correctif`,
+  (u: string, a: string, b: string) =>
+    `Ta gueule ${u}, ${a.toLowerCase()} : chaque mot ajoute une couche à ton statut de ${b.toLowerCase()}`,
+  (u: string, a: string, b: string) =>
+    `${u}, ${a.toLowerCase()} et ${b.toLowerCase()}, tu peux arrêter de transformer chaque message en catastrophe`,
+  (u: string, a: string, b: string) =>
+    `${a} ${u} : même avec une idée simple, tu trouves le moyen de faire le ${b.toLowerCase()}`,
+  (u: string, a: string, b: string) =>
+    `Mais quel ${a.toLowerCase()}, ${u} : ta confiance dépasse largement ton niveau de ${b.toLowerCase()}`,
+  (u: string, a: string, b: string) =>
+    `${u}, ton intervention est un mélange de ${a.toLowerCase()} et de ${b.toLowerCase()}, avec zéro conclusion`,
+  (u: string, a: string, b: string) =>
+    `Aaah ${u}, ${a.toLowerCase()} : tu confonds encore une fois aplomb, confusion et talent de ${b.toLowerCase()}`,
+  (u: string, a: string, b: string) =>
+    `${a} et ${b}, ${u} : tu n'as pas une opinion, tu as une panne de raisonnement`,
+  (u: string, a: string, b: string) =>
+    `Franchement ${u}, ${a.toLowerCase()} : ton message mérite surtout un prix de ${b.toLowerCase()}`,
+  (u: string, a: string, b: string) =>
+    `${u}, va dormir avec ton statut de ${a.toLowerCase()} et ta logique de ${b.toLowerCase()}`,
+  (u: string, a: string, b: string) =>
+    `Sors de là ${u}, ${a.toLowerCase()} : même ton pseudo a plus de présence que ce ${b.toLowerCase()}`,
+  (u: string, a: string, b: string) =>
+    `Nan mais ${u}, quel ${a.toLowerCase()} : tu prends vraiment tes réflexions de ${b.toLowerCase()} au sérieux`,
+  (u: string, a: string, b: string) =>
+    `${a} ${u}, tu m'épuises : chaque réponse confirme que tu es un ${b.toLowerCase()} fini`,
+  (u: string, a: string, b: string) =>
+    `Oh ${u}, ${a.toLowerCase()} : tu viens encore de faire une démonstration de ${b.toLowerCase()} sans aucune honte`,
+  (u: string, a: string, b: string) =>
+    `${u}, j'en reviens pas : un ${a.toLowerCase()} pareil peut vraiment se croire moins ${b.toLowerCase()} que ça`,
+  (u: string, a: string, b: string) =>
+    `Ta gueule ${u}, ${a.toLowerCase()} et ${b.toLowerCase()} : fin de la démonstration`,
 ];
 
-function fallbackInsult(username: string, messageContent: string): string {
-  const [a, b] = pickTwo();
+function getRoastExcerpt(messageContent: string, maxLength = 38): string {
+  const cleaned = messageContent
+    .replace(/https?:\/\/\S+/gi, "ce lien")
+    .replace(/[\r\n]+/g, " ")
+    .replace(/["'`]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!cleaned) return "ce silence";
+  return cleaned.length > maxLength
+    ? `${cleaned.slice(0, maxLength - 1).trimEnd()}…`
+    : cleaned;
+}
+
+function fallbackInsult(
+  username: string,
+  messageContent: string,
+  recentConversation = "",
+): string {
+  const [a, b] = pickTwo(recentConversation);
+  const excerpt = getRoastExcerpt(messageContent);
   const template = pick(FALLBACK_TEMPLATES);
-  return withSuffix(template(shortenUsername(username), a, b, messageContent.slice(0, 25)));
+  const roast = template(shortenUsername(username), a, b, excerpt);
+  return withSuffix(roast);
 }
 
 // ──────────────────────────────────────────────
@@ -346,26 +417,43 @@ function markRateLimited(entry: GroqClient, retryAfterSec = 30): void {
 // STYLES DE PROMPT — MODE INSULTE (12 VARIATIONS)
 // ──────────────────────────────────────────────
 
-function buildPromptInsulte(username: string, messageContent: string): string {
-  const [ins1, ins2] = pickTwo();
+function buildPromptInsulte(
+  username: string,
+  messageContent: string,
+  recentConversation: string,
+): string {
+  const [ins1, ins2] = pickTwo(recentConversation);
   const shortName = shortenUsername(username);
   const excerpt = messageContent.slice(0, 120).trim();
+  const conversationContext = recentConversation || "(aucun historique disponible)";
 
   const pseudoInstruction = `VANNE SUR LE PSEUDO (obligatoire) : analyse le pseudo "${shortName}" et invente une moquerie UNIQUE et SPÉCIFIQUE basée sur ce pseudo précis — ses lettres, ses chiffres, sa sonorité, ce que le mot évoque, si c'est prétentieux/nul/edgy/banal/bizarre. PAS de formule générique type "ton pseudo c'est nul". Sois créatif et précis.`;
 
-  const violence = `NIVEAU DE VIOLENCE : MAXIMAL. Aucune retenue. Chaque réponse doit être une attaque frontale, brutale, sans filtre. Cumule plusieurs insultes dans une même phrase. Le but est de dévaster en une réponse.`;
+  const violence = `NIVEAU DE ROAST : TRÈS HARD. Attaque frontalement le message et son auteur avec des insultes lourdes, mais reste dans le registre de la vanne : aucune menace, aucun appel à la violence et aucune attaque basée sur une caractéristique protégée. La brutalité doit servir une phrase qui a du sens, pas une liste aléatoire.`;
+
+  const contextualAnalysis = `ANALYSE OBLIGATOIRE AVANT DE RÉPONDRE :
+1. Lis le message actuel et l'historique récent.
+2. Identifie ce que la personne essaie de dire : question, opinion, provocation, blague, erreur, relance ou message vide.
+3. Trouve le détail précis à retourner contre elle : logique bancale, contradiction, formulation, prétention, confusion ou timing. Si le message est une question, moque la question ou son raisonnement, pas seulement le pseudo.
+4. Construis une phrase naturelle avec une chute claire. Les insultes doivent qualifier quelque chose dans la phrase et ne doivent jamais être empilées comme une liste.
+5. Varie l'angle, la structure, le vocabulaire et les insultes par rapport aux réponses visibles dans l'historique. Ne recycle pas une phrase ou le même duo d'insultes.
+6. Le ton est très dur, moqueur et drôle, mais reste une vanne adressée à l'utilisateur : pas de menace réelle, pas d'incitation à se faire du mal et pas d'attaque basée sur race, religion, nationalité, genre, orientation, handicap ou autre caractéristique protégée.
+<historique_recent>
+${conversationContext}
+</historique_recent>
+<message_actuel>${excerpt || "(message vide)"}</message_actuel>`;
 
   // ⚠️ Règle critique JSON — ajoutée à chaque style
   const noQuotesRule = `\nRÈGLE JSON CRITIQUE : la valeur de "reply" ne doit JAMAIS contenir de guillemets doubles ( " ). Si tu veux citer quelque chose, utilise des guillemets simples ( ' ) ou des chevrons ( « » ). Exemple valide : {"reply":"lmao t'as dit ça ? ntm fdp"} — Exemple INVALIDE : {"reply":"il dit \\"bonjour\\""}. Toute réponse avec des guillemets doubles à l'intérieur sera rejetée.`;
 
   const styles: string[] = [
     // 0 — RAGE BRUTE DOUBLE INSULTE
-    `Tu es un bot Discord d'une violence verbale extrême. Tu empiles les insultes sans pitié.
+    `Tu es un bot Discord spécialisé dans le roast très hard, contextuel et drôle. Tu n'empiles pas des insultes au hasard.
 ${violence}
 INSULTES OBLIGATOIRES : utilise "${ins1}" ET "${ins2}" dans ta réponse.
 ${pseudoInstruction}
 MESSAGE REÇU : "${excerpt}"
-Réagis à ce message en démolissant son auteur. Empile les insultes, mets le pseudo, sois dévastateur.
+Réagis à ce message en démolissant son auteur avec une phrase qui suit une idée précise. Mets le pseudo et termine par une chute.
 EXEMPLES :
 - "${ins1} ${shortName} gros ${ins2.toLowerCase()} ferme ta putain de gueule btw 🫩✌🏻"
 - "ntm ${shortName} t'es un ${ins1.toLowerCase()} doublé d'un ${ins2.toLowerCase()} tg"
@@ -496,16 +584,16 @@ RÈGLES : épuisé + enragé, 2 insultes min, 7-16 mots, pseudo présent.
 JSON : {"reply":"..."}`,
 
     // 10 — ACCUMULATION PURE (liste d'insultes en cascade)
-    `Tu es un bot Discord qui répond en enchaînant les insultes sans respirer.
+    `Tu es un bot Discord qui répond avec une phrase explosive et cohérente, pas avec une liste d'insultes.
 ${violence}
 INSULTES OBLIGATOIRES : "${ins1}" ET "${ins2}" — et ajoutes-en d'autres de ton invention.
 ${pseudoInstruction}
 MESSAGE REÇU : "${excerpt}"
-Enchaîne 3 à 5 insultes différentes en une seule phrase explosive qui démarre ou se termine par le pseudo.
+Utilise les deux insultes dans une seule phrase explosive qui démarre ou se termine par le pseudo, en les reliant à un détail du message.
 EXEMPLES :
 - "${shortName} ${ins1.toLowerCase()} ${ins2.toLowerCase()} tête de con ferme ta putain de gueule btw 🫩✌🏻"
 - "ntm ${ins1.toLowerCase()} ${ins2.toLowerCase()} ${shortName} fils de pute tg sérieux"
-- "${ins1} ${ins2} ${shortName} gros connard raclure de chiotte va crever"
+- "${ins1} ${ins2} ${shortName} quel raisonnement de raclure, retourne réviser ça"
 RÈGLES : cascade de 3-5 insultes, une seule phrase, pseudo présent, ultra-violent.
 JSON : {"reply":"..."}`,
 
@@ -524,7 +612,16 @@ RÈGLES : tacle précis sur le contenu du message, 2 insultes min, 8-16 mots, ps
 JSON : {"reply":"..."}`,
   ];
 
-  return styles[Math.floor(Math.random() * styles.length)]! + noQuotesRule;
+  const priorityRules = `\nRÈGLES PRIORITAIRES :
+- Compréhension et pertinence avant la violence gratuite : le roast doit répondre à ce qui vient d'être dit.
+- Pseudo présent, mais ne te contente jamais d'une vanne générique sur le pseudo.
+- Deux insultes fortes minimum, intégrées naturellement dans une phrase qui a du sens.
+- Pas de liste d'insultes, pas de copier-coller de l'historique, pas de même structure deux fois de suite.
+- Si le message est ambigu ou vide, fais une vanne courte sur cette ambiguïté plutôt que d'inventer un contexte.
+- Réponse en français, généralement 10 à 24 mots (7 à 14 pour le style ultra-court), avec une chute lisible.
+JSON OBLIGATOIRE : réponds uniquement avec {"reply":"..."}.`;
+
+  return contextualAnalysis + "\n\n" + styles[Math.floor(Math.random() * styles.length)]! + priorityRules + noQuotesRule;
 }
 
 // ──────────────────────────────────────────────
@@ -724,7 +821,7 @@ function buildPrompt(
   recentConversation: string,
 ): string {
   if (mode === "suceur") return buildPromptSuceur(username, messageContent, recentConversation);
-  return buildPromptInsulte(username, messageContent);
+  return buildPromptInsulte(username, messageContent, recentConversation);
 }
 
 // ──────────────────────────────────────────────
@@ -744,6 +841,31 @@ function parseReply(raw: string): string | null {
     if (match?.[1]) return match[1].replace(/\\n/g, "\n").replace(/\\"/g, '"').trim();
   }
   return null;
+}
+
+function isRepetitiveRoast(reply: string, recentConversation: string): boolean {
+  if (!recentConversation.trim()) return false;
+  const normalize = (text: string) =>
+    text
+      .toLocaleLowerCase("fr")
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  const normalizedReply = normalize(reply);
+  if (normalizedReply.length < 18) return false;
+
+  return recentConversation
+    .split("\n")
+    .filter((line) => /^bot\s*:/i.test(line))
+    .some((line) => {
+      const previous = normalize(line.replace(/^bot\s*:\s*/i, ""));
+      if (!previous) return false;
+      if (previous === normalizedReply) return true;
+      const currentWords = new Set(normalizedReply.split(" "));
+      const previousWords = new Set(previous.split(" "));
+      const overlap = [...currentWords].filter((word) => previousWords.has(word)).length;
+      return overlap >= 5 && overlap / Math.max(currentWords.size, previousWords.size) >= 0.65;
+    });
 }
 
 // ──────────────────────────────────────────────
@@ -805,7 +927,11 @@ async function callGroqWithRetry(
         // Mode insulte : valider qu'il y a bien une insulte
         if (mode === "insulte" && !containsInsult(parsed)) {
           logger.warn({ raw, parsed, attempt }, "Réponse IA sans insulte → fallback local");
-          return fallbackInsult(username, messageContent);
+          return fallbackInsult(username, messageContent, recentConversation);
+        }
+        if (mode === "insulte" && isRepetitiveRoast(parsed, recentConversation)) {
+          logger.warn({ parsed, attempt }, "Roast IA trop proche d'une réponse récente → fallback local");
+          return fallbackInsult(username, messageContent, recentConversation);
         }
         const reply = withSuffix(parsed);
         logger.debug({ model, attempt, reply, mode }, "Réponse IA valide");
@@ -815,7 +941,7 @@ async function callGroqWithRetry(
       logger.warn({ raw, parsed, attempt, mode }, "Réponse IA vide ou invalide → fallback local");
       return mode === "suceur"
         ? fallbackSuceur(username, messageContent, recentConversation)
-        : fallbackInsult(username, messageContent);
+        : fallbackInsult(username, messageContent, recentConversation);
     } catch (err: unknown) {
       const status = (err as { status?: number }).status;
       const message = (err as { message?: string }).message ?? "";
@@ -840,24 +966,25 @@ async function callGroqWithRetry(
       logger.error({ err, attempt }, "Erreur API non rate-limit");
       return mode === "suceur"
         ? fallbackSuceur(username, messageContent, recentConversation)
-        : fallbackInsult(username, messageContent);
+        : fallbackInsult(username, messageContent, recentConversation);
     }
   }
 
   logger.warn("Toutes les clés épuisées → fallback");
   return mode === "suceur"
     ? fallbackSuceur(username, messageContent, recentConversation)
-    : fallbackInsult(username, messageContent);
+    : fallbackInsult(username, messageContent, recentConversation);
 }
 
 function fallbackForMode(
   mode: BotMode,
   username: string,
   messageContent: string,
+  recentConversation = "",
 ): string {
   return mode === "suceur"
-    ? fallbackSuceur(username, messageContent)
-    : fallbackInsult(username, messageContent);
+    ? fallbackSuceur(username, messageContent, recentConversation)
+    : fallbackInsult(username, messageContent, recentConversation);
 }
 
 async function generateReply(
@@ -869,7 +996,7 @@ async function generateReply(
 ): Promise<string> {
   const fallback = mode === "suceur"
     ? fallbackSuceur(username, messageContent, recentConversation)
-    : fallbackForMode(mode, username, messageContent);
+    : fallbackForMode(mode, username, messageContent, recentConversation);
   let timeout: ReturnType<typeof setTimeout> | undefined;
 
   try {
@@ -1078,9 +1205,7 @@ export async function startBot(): Promise<void> {
       }
 
       try {
-        const recentConversation = mode === "suceur"
-          ? await getRecentConversation(message)
-          : "";
+        const recentConversation = await getRecentConversation(message);
         const finalReply = await generateReply(
           groqClients,
           username,
