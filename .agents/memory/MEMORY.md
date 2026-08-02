@@ -1,0 +1,1 @@
+- [Discord reply reliability](discord-reply-reliability.md) — typing activity must be paired with bounded AI fallback and retried Discord sends.
