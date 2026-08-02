@@ -666,6 +666,10 @@ const MODELS = [
   "gemma2-9b-it",
 ];
 
+const MAX_AI_WAIT_MS = 18_000;
+const DISCORD_SEND_TIMEOUT_MS = 8_000;
+const DISCORD_SEND_ATTEMPTS = 3;
+
 // ──────────────────────────────────────────────
 // APPEL API AVEC RETRY SUR 429
 // ──────────────────────────────────────────────
@@ -755,6 +759,119 @@ async function callGroqWithRetry(
     : fallbackInsult(username, messageContent);
 }
 
+function fallbackForMode(
+  mode: BotMode,
+  username: string,
+  messageContent: string,
+): string {
+  return mode === "suceur"
+    ? fallbackSuceur(username, messageContent)
+    : fallbackInsult(username, messageContent);
+}
+
+async function generateReply(
+  clients: GroqClient[],
+  username: string,
+  messageContent: string,
+  mode: BotMode,
+): Promise<string> {
+  const fallback = fallbackForMode(mode, username, messageContent);
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    const reply = await Promise.race([
+      callGroqWithRetry(clients, username, messageContent, mode),
+      new Promise<string>((resolve) => {
+        timeout = setTimeout(() => {
+          logger.warn(
+            { username, mode, timeoutMs: MAX_AI_WAIT_MS },
+            "Réponse Groq trop lente — fallback local utilisé",
+          );
+          resolve(fallback);
+        }, MAX_AI_WAIT_MS);
+      }),
+    ]);
+    return reply;
+  } catch (err) {
+    logger.error({ err, username, mode }, "Erreur génération réponse — fallback local");
+    return fallback;
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
+async function wait(ms: number): Promise<void> {
+  await new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+async function sendWithTimeout(
+  operation: Promise<unknown>,
+  timeoutMs: number,
+): Promise<void> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    await Promise.race([
+      operation,
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(
+          () => reject(new Error(`Discord send timeout after ${timeoutMs}ms`)),
+          timeoutMs,
+        );
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
+async function sendReplyReliably(message: Message, reply: string): Promise<boolean> {
+  for (let attempt = 1; attempt <= DISCORD_SEND_ATTEMPTS; attempt++) {
+    try {
+      await sendWithTimeout(message.reply(reply), DISCORD_SEND_TIMEOUT_MS);
+      logger.debug(
+        { messageId: message.id, attempt },
+        "Réponse Discord envoyée",
+      );
+      return true;
+    } catch (err) {
+      logger.warn(
+        { err, messageId: message.id, attempt },
+        `Échec réponse Discord ${attempt}/${DISCORD_SEND_ATTEMPTS}`,
+      );
+      if (attempt < DISCORD_SEND_ATTEMPTS) await wait(attempt * 750);
+    }
+  }
+
+  if (message.channel instanceof TextChannel) {
+    for (let attempt = 1; attempt <= DISCORD_SEND_ATTEMPTS; attempt++) {
+      try {
+        await sendWithTimeout(
+          message.channel.send(reply),
+          DISCORD_SEND_TIMEOUT_MS,
+        );
+        logger.debug(
+          { messageId: message.id, attempt },
+          "Réponse Discord envoyée via le salon",
+        );
+        return true;
+      } catch (err) {
+        logger.warn(
+          { err, messageId: message.id, attempt },
+          `Échec envoi salon Discord ${attempt}/${DISCORD_SEND_ATTEMPTS}`,
+        );
+        if (attempt < DISCORD_SEND_ATTEMPTS) await wait(attempt * 750);
+      }
+    }
+  }
+
+  logger.error(
+    { messageId: message.id, channelId: message.channelId },
+    "Impossible d'envoyer la réponse Discord après plusieurs tentatives",
+  );
+  return false;
+}
+
 // ──────────────────────────────────────────────
 // FILE D'ATTENTE PAR SALON (anti-crash multi-messages)
 // ──────────────────────────────────────────────
@@ -831,22 +948,27 @@ export async function startBot(): Promise<void> {
     const messageContent = message.content;
 
     enqueueForChannel(channelId, async () => {
+      let typingInterval: ReturnType<typeof setInterval> | undefined;
       if (message.channel instanceof TextChannel) {
-        await message.channel.sendTyping().catch(() => {});
+        const textChannel = message.channel;
+        await textChannel.sendTyping().catch(() => {});
+        typingInterval = setInterval(() => {
+          textChannel.sendTyping().catch((err: unknown) => {
+            logger.debug({ err, channelId }, "Impossible de rafraîchir l'indicateur d'écriture");
+          });
+        }, 8_000);
       }
 
-      const finalReply = await callGroqWithRetry(groqClients, username, messageContent, mode);
-
       try {
-        await message.reply(finalReply);
-      } catch {
-        try {
-          if (message.channel instanceof TextChannel) {
-            await message.channel.send(`${shortenUsername(username)} ${finalReply}`);
-          }
-        } catch (err2) {
-          logger.error({ err2 }, "Impossible d'envoyer la réponse");
-        }
+        const finalReply = await generateReply(
+          groqClients,
+          username,
+          messageContent,
+          mode,
+        );
+        await sendReplyReliably(message, finalReply);
+      } finally {
+        if (typingInterval) clearInterval(typingInterval);
       }
     });
   });
