@@ -788,7 +788,13 @@ export async function startBot(): Promise<void> {
     return;
   }
 
-  const allowedChannelId = process.env["DISCORD_CHANNEL_ID"] ?? null;
+  const allowedChannelId = process.env["ALLOWED_CHANNEL_ID"] ?? null;
+  if (!allowedChannelId) {
+    logger.warn(
+      "ALLOWED_CHANNEL_ID non défini — le bot Discord ne démarrera pas pour éviter de répondre dans tous les salons",
+    );
+    return;
+  }
   const mode = getBotMode();
 
   logger.info(

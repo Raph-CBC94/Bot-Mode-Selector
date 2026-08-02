@@ -15,7 +15,7 @@ Bot Discord alimenté par Groq (LLaMA/Gemma) avec deux modes de personnalité : 
 | `DISCORD_BOT_TOKEN` | Token du bot Discord |
 | `GROQ_API_KEY` | Clé API Groq principale |
 | `GROQ_API_KEY_1` … `GROQ_API_KEY_20` | Clés Groq supplémentaires (rotation automatique) |
-| `DISCORD_CHANNEL_ID` | (optionnel) Restreindre le bot à un salon précis |
+| `ALLOWED_CHANNEL_ID` | ID du seul salon Discord dans lequel le bot est autorisé à répondre |
 | `BOT_MODE` | `insulte` (défaut) ou `suceur` — choisir le mode du bot |
 
 ## Modes du bot
@@ -58,6 +58,6 @@ _Populate as you build — explicit user instructions worth remembering across s
 ## Gotchas
 
 - Ne jamais appeler `pnpm dev` à la racine — passer par les workflows Replit
-- Le bot ne démarre pas si `DISCORD_BOT_TOKEN` est absent (warning loggé, pas de crash)
+- Le bot ne démarre pas si `DISCORD_BOT_TOKEN` ou `ALLOWED_CHANNEL_ID` est absent (warning loggé, pas de crash)
 - Si toutes les clés Groq sont rate-limitées, le bot utilise des fallbacks locaux (pas d'arrêt)
 - `BOT_MODE` est lu au démarrage du bot — changer la variable nécessite un redémarrage
