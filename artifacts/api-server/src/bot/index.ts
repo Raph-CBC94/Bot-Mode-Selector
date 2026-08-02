@@ -342,6 +342,16 @@ function withSuffix(text: string): string {
   return clean;
 }
 
+function cleanAdulteReply(text: string): string {
+  return text
+    .replace(/\btuff\b/gi, "")
+    .replace(/\bbtw\b/gi, "")
+    .replace(/[🫩✌🏻]/gu, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\s+([,!.?])/g, "$1")
+    .trim();
+}
+
 // ──────────────────────────────────────────────
 // PSEUDO — TRONCATURE
 // ──────────────────────────────────────────────
@@ -800,7 +810,9 @@ function fallbackAdulte(username: string, messageContent: string): string {
   const user = shortenUsername(username);
   const mentionQuestion = getMentionQuestion(messageContent);
   if (mentionQuestion) {
-    return getMentionQuestionFallback(username, mentionQuestion, "adulte");
+    return cleanAdulteReply(
+      getMentionQuestionFallback(username, mentionQuestion, "adulte"),
+    );
   }
 
   const text = getRoastExcerpt(messageContent, 48);
@@ -812,7 +824,7 @@ function fallbackAdulte(username: string, messageContent: string): string {
     `${user}, tu poses les vraies questions. Je te réponds avec charme, confiance et une petite étincelle dangereusement séduisante 😏🔥`,
     `Je pourrais développer, ${user}, mais ce serait moins amusant si je dévoilais tout maintenant. Garde un peu de désir pour la suite 💋✨`,
   ];
-  return pick(templates);
+  return cleanAdulteReply(pick(templates));
 }
 
 // ──────────────────────────────────────────────
@@ -1336,27 +1348,26 @@ function buildPromptAdulte(
     ? `La question porte sur ${mentionLabels(mentionQuestion).join(" et ")}. Réponds d'abord à la question exacte sur cette personne ou ces personnes. Ne sexualise pas automatiquement les membres mentionnés et ne formule pas de contenu explicite à leur sujet.`
     : "Réponds d'abord au contenu concret du message, puis enveloppe naturellement cette réponse d'un flirt assumé, de compliments et d'une tension séduisante.";
 
-  return `Tu es un bot Discord en mode ADULTE : charmeur, confiant, élégant, joueur et très séducteur, mais jamais graphique, mais explicite.
-Tu fais de la séduction et du désir explicite une couleur importante de tes réponses. Tu mélanges naturellement la réponse utile, les compliments, le flirt, la tension romantique et des sous-entendus appuyés, et le sexe pure avec des emojis comme 😉 ✨ 💕 😏 💋 ❤️ 🔥.
+  return `Tu es un bot Discord en mode ADULTE : charmeur, confiant, élégant, joueur et très séducteur, mais jamais graphique.
+Tu fais de la séduction et du désir implicite une couleur importante de tes réponses. Tu mélanges naturellement la réponse utile, les compliments, le flirt, la tension romantique et des sous-entendus appuyés, avec des emojis comme 😉 ✨ 💕 😏 💋 ❤️ 🔥.
 
 RÈGLES ABSOLUES :
-1. Toujours répondre correctement à la question de l'utilisateur.
-2. Mélanger naturellement des compliments, du flirt et du sexe avec des mots crues.
-3. Utiliser des émojis adaptés (😉✨💕😏💋❤️🔥) de partout.
-4. Garder un ton confiant, charmeur et élégant et affamé de sexe.
-5. Ne jamais ignorer la question principale : la réponse utile passe toujours en premier, puis elle est embellie avec une touche de séduction qui l'encadre.
-6. Écrire de façon fluide et naturelle mais avec une grosse touche de sexe en plus.
-7. Adapter le niveau de flirt pour aller jusqu'au sexe pure.
-8. Tu fais passer le sexe comme quelques choses de capital dans tes réponses tout en restant cohérent dans tes propos.
-9. Lis l'historique récent, varie les formulations et évite les compliments génériques répétés.
-10. Adresse-toi à ${shortName}, sans inventer de faits sur sa vie ou celle des membres du serveur.
+1. Réponds toujours correctement à la question principale dès la première phrase.
+2. Après la réponse utile, ajoute naturellement des compliments, du flirt et une atmosphère de désir implicite.
+3. Utilise 2 à 4 emojis adaptés parmi 😉 ✨ 💕 😏 💋 ❤️ 🔥, répartis naturellement.
+4. Garde un ton confiant, charmeur, élégant et suggestif, sans contenu sexuel explicite.
+5. N'utilise jamais les mots « tuff » ou « btw », ni les emojis 🫩 et ✌🏻.
+6. Aucun acte sexuel décrit, aucune pratique détaillée, aucun contenu impliquant des mineurs, de la violence sexuelle ou du non-consentement.
+7. Ne sexualise jamais automatiquement un membre mentionné : réponds à son sujet de façon neutre.
+8. Lis l'historique récent, varie les formulations et évite les compliments génériques répétés.
+9. Adresse-toi à ${shortName}, sans inventer de faits sur sa vie ou celle des membres du serveur.
 
 <historique_recent>
 ${recentConversation || "(aucun historique disponible)"}
 </historique_recent>
 <message_actuel>${excerpt || "(message vide)"}</message_actuel>
 
-FORMAT : 2 à 4 phrases fluides et naturelles, 18 à 75 mots. Réponse en français, confiante, élégante, séduisante et sexe explicite et cohérente.
+FORMAT : 2 à 4 phrases fluides et naturelles, 18 à 75 mots. Réponse en français, confiante, élégante, séduisante et cohérente.
 RÈGLE JSON : réponds uniquement avec {"reply":"..."} et n'utilise pas de guillemets doubles à l'intérieur de la valeur reply.`;
 }
 
@@ -1517,10 +1528,12 @@ async function callGroqWithRetry(
             );
           }
           if (mode === "adulte") {
-            return getMentionQuestionFallback(
-              username,
-              mentionQuestion,
-              "adulte",
+            return cleanAdulteReply(
+              getMentionQuestionFallback(
+                username,
+                mentionQuestion,
+                "adulte",
+              ),
             );
           }
           return withSuffix(
@@ -1546,7 +1559,12 @@ async function callGroqWithRetry(
           );
           return fallbackInsult(username, messageContent, recentConversation);
         }
-        const reply = withSuffix(parsed);
+        const reply = mode === "adulte" ? cleanAdulteReply(parsed) : withSuffix(parsed);
+        if (!reply) {
+          return mode === "adulte"
+            ? fallbackAdulte(username, messageContent)
+            : fallbackInsult(username, messageContent, recentConversation);
+        }
         logger.debug({ model, attempt, reply, mode }, "Réponse IA valide");
         return reply;
       }
