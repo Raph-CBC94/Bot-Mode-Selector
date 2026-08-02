@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { startBot } from "./bot/index";
 
 const rawPort = process.env["PORT"];
 
@@ -22,4 +23,9 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+});
+
+// Démarrage du bot Discord (non-bloquant)
+startBot().catch((err) => {
+  logger.error({ err }, "Erreur fatale au démarrage du bot Discord");
 });
