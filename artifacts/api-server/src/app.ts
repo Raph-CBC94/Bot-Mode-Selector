@@ -76,14 +76,16 @@ app.get("/", (_req, res) => {
           <div class="mode"><strong>insulte</strong> — mode agressif original</div>
           <div class="mode"><strong>suceur</strong> — mode ultra-gentil et toujours d’accord</div>
           <div class="mode"><strong>vantard</strong> — mode supérieur, arrogant et constamment en train de se vanter</div>
+          <div class="mode"><strong>adulte</strong> — mode flirt suggestif, non graphique, avec sous-entendus légers</div>
         </div>
       </section>
 
       <section class="step">
         <h2>2. Dans Render</h2>
         <p>Va dans <strong>Environment</strong>, puis ajoute ou modifie :</p>
-        <code>BOT_MODE=vantard</code>
-        <p>Remplace <code>vantard</code> par <code>insulte</code> ou <code>suceur</code> pour choisir une autre personnalité.</p>
+        <code>BOT_MODE=adulte</code>
+        <p>Remplace <code>adulte</code> par <code>insulte</code>, <code>suceur</code> ou <code>vantard</code> pour choisir une autre personnalité.</p>
+        <p>Le mode adulte reste suggestif et non graphique : pas de contenu sexuel explicite et pas de sexualisation automatique des membres mentionnés.</p>
       </section>
 
       <section class="step">

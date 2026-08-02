@@ -1,6 +1,6 @@
 # Chatbot Renewal Engine
 
-Bot Discord alimenté par Groq (LLaMA/Gemma) avec trois modes de personnalité : **Insulte** (ultra-agressif), **Suceur Ultime** (ultra-gentil et approbateur) et **Vantard** (arrogant et persuadé d'être supérieur).
+Bot Discord alimenté par Groq (LLaMA/Gemma) avec quatre modes de personnalité : **Insulte** (ultra-agressif), **Suceur Ultime** (ultra-gentil et approbateur), **Vantard** (arrogant et persuadé d'être supérieur) et **Adulte** (flirt suggestif non graphique).
 
 ## Run & Operate
 
@@ -16,7 +16,7 @@ Bot Discord alimenté par Groq (LLaMA/Gemma) avec trois modes de personnalité :
 | `GROQ_API_KEY` | Clé API Groq principale |
 | `GROQ_API_KEY_1` … `GROQ_API_KEY_20` | Clés Groq supplémentaires (rotation automatique) |
 | `ALLOWED_CHANNEL_ID` | ID du seul salon Discord dans lequel le bot est autorisé à répondre |
-| `BOT_MODE` | `insulte` (défaut), `suceur` ou `vantard` — choisir le mode du bot |
+| `BOT_MODE` | `insulte` (défaut), `suceur`, `vantard` ou `adulte` — choisir le mode du bot |
 
 ## Modes du bot
 
@@ -29,6 +29,9 @@ Le bot est **ultra-gentil**, approuve tout, flatte l'interlocuteur, valide chaqu
 ### Mode `vantard`
 Le bot est **arrogant et supérieur**, se vante de son intelligence et rabaisse les autres de manière théâtrale. Il répond d'abord au contenu du message et aux questions sur les membres mentionnés, puis ajoute sa vantardise. Pour l'activer : `BOT_MODE=vantard`.
 
+### Mode `adulte`
+Le bot répond d'abord réellement à la question, puis ajoute un ton de flirt suggestif avec des sous-entendus légers et des emojis comme 😉 😏 🔥. Le mode reste non graphique : pas de contenu sexuel explicite, pas de mineurs, pas de violence sexuelle, pas de contenu non consenti et pas de sexualisation automatique des membres mentionnés. Pour l'activer : `BOT_MODE=adulte`.
+
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
@@ -40,7 +43,7 @@ Le bot est **arrogant et supérieur**, se vante de son intelligence et rabaisse 
 
 ## Architecture
 
-- `artifacts/api-server/src/bot/index.ts` — cœur du bot : trois modes, prompts, fallbacks, rotation des clés Groq, queue par salon
+- `artifacts/api-server/src/bot/index.ts` — cœur du bot : quatre modes, prompts, fallbacks, rotation des clés Groq, queue par salon
 - `artifacts/api-server/src/bot/affinities.ts` — système d'affinité par utilisateur (score -100 → +100)
 - `artifacts/api-server/src/index.ts` — point d'entrée : démarre Express + bot Discord
 

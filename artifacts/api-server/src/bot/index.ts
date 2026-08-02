@@ -12,12 +12,13 @@ import { logger } from "../lib/logger";
 // MODE DU BOT
 // ──────────────────────────────────────────────
 
-export type BotMode = "insulte" | "suceur" | "vantard";
+export type BotMode = "insulte" | "suceur" | "vantard" | "adulte";
 
 function getBotMode(): BotMode {
   const raw = (process.env["BOT_MODE"] ?? "insulte").toLowerCase().trim();
   if (raw === "suceur") return "suceur";
   if (raw === "vantard") return "vantard";
+  if (raw === "adulte") return "adulte";
   return "insulte";
 }
 
@@ -279,6 +280,9 @@ function getMentionQuestionFallback(
     if (mode === "vantard") {
       return `Je préfère ${chosen} à ${other}, évidemment : mon jugement est largement supérieur au vôtre. Même toi, ${asker}, tu pouvais presque le deviner.`;
     }
+    if (mode === "adulte") {
+      return `Je préfère ${chosen} à ${other}, évidemment : réponse claire, avec juste ce qu'il faut de tension dans le débat 😉`;
+    }
     return `Je préfère ${chosen} à ${other} : choix évident, contrairement à ta question de ${asker}, espèce de bouffon.`;
   }
 
@@ -288,6 +292,9 @@ function getMentionQuestionFallback(
     }
     if (mode === "vantard") {
       return `Je préfère clairement ${first}. J'ai évidemment le meilleur goût du serveur, ${asker}, essaie de suivre.`;
+    }
+    if (mode === "adulte") {
+      return `Je préfère clairement ${first}. Question intéressante, ${asker} — je garde quand même une part de mystère 😏`;
     }
     return `Je préfère clairement ${first} ; enfin une question moins éclatée que d'habitude, ${asker}, sale connard.`;
   }
@@ -299,6 +306,9 @@ function getMentionQuestionFallback(
     if (mode === "vantard") {
       return `Oui, je suis d'accord sur ${first} : mon analyse est la seule vraiment fiable ici, ${asker}.`;
     }
+    if (mode === "adulte") {
+      return `Oui, je suis d'accord sur ${first} — réponse nette, avec une petite tension dans l'air 😉`;
+    }
     return `Oui, je suis d'accord sur ${first} ; pour une fois, ${asker}, ta question de ${question.targets.length > 1 ? "bouffon" : "connard"} tient debout.`;
   }
 
@@ -308,6 +318,9 @@ function getMentionQuestionFallback(
     }
     if (mode === "vantard") {
       return `Oui, ${first} me va bien, mais personne ici n'est à mon niveau. ${asker}, prends des notes.`;
+    }
+    if (mode === "adulte") {
+      return `Oui, j'aime bien ${first} — je réponds franchement, mais je garde le reste dans le domaine du sous-entendu 😏`;
     }
     return `Oui, ${first} me va bien ; toi par contre, ${asker}, t'es un sacré ${pick(["connard", "bouffon", "déchet"])}.`;
   }
@@ -319,6 +332,9 @@ function getMentionQuestionFallback(
     if (mode === "vantard") {
       return `Sur ${first}, mon avis est évidemment le plus pertinent du serveur. ${asker}, tu as de la chance de pouvoir le demander.`;
     }
+    if (mode === "adulte") {
+      return `Sur ${first}, je dirais que ça se défend — joli sujet de conversation, avec un petit côté piquant 🔥`;
+    }
     return `Sur ${first}, je dirais que ça se défend ; toi, ${asker}, t'es quand même un ${pick(["gros con", "sac à merde", "abruti de service"])}.`;
   }
 
@@ -327,6 +343,9 @@ function getMentionQuestionFallback(
   }
   if (mode === "vantard") {
     return `Je parle bien de ${first}. Même quand je dois préciser les choses, je reste nettement au-dessus de vous, ${asker}.`;
+  }
+  if (mode === "adulte") {
+    return `Je parle bien de ${first} — merci pour la précision, on peut garder un peu de mystère pour la suite 😉`;
   }
   return `Tu parles bien de ${first} ? Même ta question est moins claire que le cerveau d'un ${asker}, gros con.`;
 }
@@ -563,6 +582,25 @@ function fallbackVantard(username: string, messageContent: string): string {
     `« ${text} » ? Même quand tu essaies d'être pertinent, tu restes plusieurs niveaux en dessous de moi, ${user}.`,
     `${user}, compare ton niveau au mien si tu veux, mais préviens-moi quand tu auras enfin une chance.`,
     `Je pourrais t'expliquer, ${user}, mais mon intelligence mérite mieux qu'une démonstration aussi basique.`,
+  ];
+  return pick(templates);
+}
+
+function fallbackAdulte(username: string, messageContent: string): string {
+  const user = shortenUsername(username);
+  const mentionQuestion = getMentionQuestion(messageContent);
+  if (mentionQuestion) {
+    return getMentionQuestionFallback(username, mentionQuestion, "adulte");
+  }
+
+  const text = getRoastExcerpt(messageContent, 48);
+  const templates = [
+    `Pour « ${text} », ma réponse est oui — et je te laisse imaginer la suite, ${user} 😉`,
+    `${user}, j'ai compris ta question. Réponse nette, avec juste une petite étincelle de tension 😏`,
+    `Intéressant comme question, ${user}. Je réponds, mais je garde les détails croustillants dans le domaine du mystère 🔥`,
+    `« ${text} » ? Disons que la réponse est chaude, mais que je reste volontairement élégant 😉`,
+    `${user}, tu poses les vraies questions. Je te réponds sans détour, avec un peu de piquant 😏`,
+    `Je pourrais développer, ${user}, mais ce serait moins amusant si je dévoilais tout maintenant 🔥`,
   ];
   return pick(templates);
 }
@@ -1055,6 +1093,39 @@ RÈGLE JSON : réponds uniquement avec {"reply":"..."} et n'utilise pas de guill
   return prompt;
 }
 
+function buildPromptAdulte(
+  username: string,
+  messageContent: string,
+  recentConversation: string,
+): string {
+  const shortName = shortenUsername(username);
+  const excerpt = messageContent.slice(0, 500).trim();
+  const mentionQuestion = getMentionQuestion(messageContent);
+  const mentionRule = mentionQuestion
+    ? `La question porte sur ${mentionLabels(mentionQuestion).join(" et ")}. Réponds d'abord à la question exacte sur cette personne ou ces personnes. Ne sexualise pas automatiquement les membres mentionnés et ne formule pas de contenu explicite à leur sujet.`
+    : "Réponds d'abord au contenu concret du message, puis ajoute une touche de flirt légère.";
+
+  return `Tu es un bot Discord en mode ADULTE, suggestif et joueur, mais jamais graphique.
+Tu utilises un humour de flirt, des sous-entendus légers et des emojis comme 😉 😏 🔥, sans décrire d'actes sexuels, de corps nus, de pratiques, de fluides ou de détails anatomiques.
+
+RÈGLES ABSOLUES :
+1. Réponds réellement à la question ou à la demande avant d'ajouter le ton coquin.
+2. ${mentionRule}
+3. Reste non explicite : pas de pornographie, pas de description sexuelle détaillée, pas de contenu impliquant des mineurs, pas de violence sexuelle et pas de contenu non consenti.
+4. Ne sexualise jamais automatiquement un membre mentionné. Si la question vise une personne, réponds de manière neutre et garde le flirt dans la voix du bot.
+5. Garde un ton adulte, drôle, élégant et suggestif, sans être cru ni graphique.
+6. Lis l'historique récent et évite de répéter la même formule.
+7. Adresse-toi à ${shortName}, sans inventer de faits sur sa vie ou celle des membres du serveur.
+
+<historique_recent>
+${recentConversation || "(aucun historique disponible)"}
+</historique_recent>
+<message_actuel>${excerpt || "(message vide)"}</message_actuel>
+
+FORMAT : 1 à 3 phrases naturelles, 12 à 55 mots. Réponse en français.
+RÈGLE JSON : réponds uniquement avec {"reply":"..."} et n'utilise pas de guillemets doubles à l'intérieur de la valeur reply.`;
+}
+
 // ──────────────────────────────────────────────
 // DISPATCH DU PROMPT SELON LE MODE
 // ──────────────────────────────────────────────
@@ -1067,6 +1138,7 @@ function buildPrompt(
 ): string {
   if (mode === "suceur") return buildPromptSuceur(username, messageContent, recentConversation);
   if (mode === "vantard") return buildPromptVantard(username, messageContent, recentConversation);
+  if (mode === "adulte") return buildPromptAdulte(username, messageContent, recentConversation);
   return buildPromptInsulte(username, messageContent, recentConversation);
 }
 
@@ -1182,6 +1254,9 @@ async function callGroqWithRetry(
           if (mode === "vantard") {
             return getMentionQuestionFallback(username, mentionQuestion, "vantard");
           }
+          if (mode === "adulte") {
+            return getMentionQuestionFallback(username, mentionQuestion, "adulte");
+          }
           return withSuffix(getMentionQuestionFallback(username, mentionQuestion, "insulte"));
         }
 
@@ -1202,6 +1277,7 @@ async function callGroqWithRetry(
       logger.warn({ raw, parsed, attempt, mode }, "Réponse IA vide ou invalide → fallback local");
       if (mode === "suceur") return fallbackSuceur(username, messageContent, recentConversation);
       if (mode === "vantard") return fallbackVantard(username, messageContent);
+      if (mode === "adulte") return fallbackAdulte(username, messageContent);
       return fallbackInsult(username, messageContent, recentConversation);
     } catch (err: unknown) {
       const status = (err as { status?: number }).status;
@@ -1227,6 +1303,7 @@ async function callGroqWithRetry(
       logger.error({ err, attempt }, "Erreur API non rate-limit");
       if (mode === "suceur") return fallbackSuceur(username, messageContent, recentConversation);
       if (mode === "vantard") return fallbackVantard(username, messageContent);
+      if (mode === "adulte") return fallbackAdulte(username, messageContent);
       return fallbackInsult(username, messageContent, recentConversation);
     }
   }
@@ -1234,6 +1311,7 @@ async function callGroqWithRetry(
   logger.warn("Toutes les clés épuisées → fallback");
   if (mode === "suceur") return fallbackSuceur(username, messageContent, recentConversation);
   if (mode === "vantard") return fallbackVantard(username, messageContent);
+  if (mode === "adulte") return fallbackAdulte(username, messageContent);
   return fallbackInsult(username, messageContent, recentConversation);
 }
 
@@ -1245,6 +1323,7 @@ function fallbackForMode(
 ): string {
   if (mode === "suceur") return fallbackSuceur(username, messageContent, recentConversation);
   if (mode === "vantard") return fallbackVantard(username, messageContent);
+  if (mode === "adulte") return fallbackAdulte(username, messageContent);
   return fallbackInsult(username, messageContent, recentConversation);
 }
 
@@ -1257,7 +1336,9 @@ async function generateReply(
 ): Promise<string> {
   const fallback = mode === "vantard"
     ? fallbackVantard(username, messageContent)
-    : fallbackForMode(mode, username, messageContent, recentConversation);
+    : mode === "adulte"
+      ? fallbackAdulte(username, messageContent)
+      : fallbackForMode(mode, username, messageContent, recentConversation);
   let timeout: ReturnType<typeof setTimeout> | undefined;
 
   try {
