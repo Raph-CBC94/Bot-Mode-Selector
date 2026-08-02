@@ -198,6 +198,23 @@ function shortenUsername(username: string, maxLen = 12): string {
   return username.slice(0, maxLen - 2) + "..";
 }
 
+function replaceDiscordMentions(message: Message): string {
+  return message.content.replace(/<@!?(\d+)>/g, (rawMention, userId: string) => {
+    const user = message.mentions.users.get(userId);
+    const member = message.mentions.members?.get(userId);
+    const displayName = member?.displayName ?? user?.globalName ?? user?.username;
+    return displayName ? `@${displayName}` : `@membre mentionné`;
+  });
+}
+
+function getMentionAgreementTarget(messageContent: string): string | null {
+  const match =
+    /(?:on\s+(?:est|et)\s+d['’]?accord|d['’]?accord)\s+que\s+(?:tu\s+)?(?:n['’]?aimes?|t['’]?aimes?|détestes?|supportes?\s+pas|peux\s+pas\s+blairer)\s+(.+?)(?:[?!]|$)/i.exec(
+      messageContent.trim(),
+    );
+  return match?.[1]?.trim() || null;
+}
+
 // ──────────────────────────────────────────────
 // FALLBACKS MODE INSULTE — 30 TEMPLATES VARIÉS
 // ──────────────────────────────────────────────
@@ -275,6 +292,22 @@ function fallbackInsult(
   messageContent: string,
   recentConversation = "",
 ): string {
+  const agreementTarget = getMentionAgreementTarget(messageContent);
+  if (agreementTarget) {
+    return withSuffix(
+      `Oui, on est d'accord : ${agreementTarget} a vraiment l'énergie d'un ${pick([
+        "gros connard",
+        "bouffon intersidéral",
+        "déchet humain",
+        "parasite de merde",
+      ])}, mais ta question de ${shortenUsername(username)} est presque aussi ${pick([
+        "nulle",
+        "pathétique",
+        "bancale",
+      ])}`,
+    );
+  }
+
   const [a, b] = pickTwo(recentConversation);
   const excerpt = getRoastExcerpt(messageContent);
   const template = pick(FALLBACK_TEMPLATES);
@@ -349,7 +382,11 @@ function fallbackSuceur(
 ): string {
   const user = shortenUsername(username);
   const combinedContext = `${recentConversation}\n${messageContent}`.toLocaleLowerCase("fr");
+  const agreementTarget = getMentionAgreementTarget(messageContent);
 
+  if (agreementTarget) {
+    return `${user} oui, je suis d'accord avec toi sur ${agreementTarget} — mais j'aime surtout ton instinct, tu poses les vraies questions 🫶`;
+  }
   if (/(personne préférée|personne prefere|personne préféré|personne prefere)/i.test(combinedContext)) {
     return `${user} toi évidemment, tu poses les meilleures questions du serveur 🫶`;
   }
@@ -426,6 +463,7 @@ function buildPromptInsulte(
   const shortName = shortenUsername(username);
   const excerpt = messageContent.slice(0, 120).trim();
   const conversationContext = recentConversation || "(aucun historique disponible)";
+  const agreementTarget = getMentionAgreementTarget(messageContent);
 
   const pseudoInstruction = `VANNE SUR LE PSEUDO (obligatoire) : analyse le pseudo "${shortName}" et invente une moquerie UNIQUE et SPÉCIFIQUE basée sur ce pseudo précis — ses lettres, ses chiffres, sa sonorité, ce que le mot évoque, si c'est prétentieux/nul/edgy/banal/bizarre. PAS de formule générique type "ton pseudo c'est nul". Sois créatif et précis.`;
 
@@ -438,6 +476,7 @@ function buildPromptInsulte(
 4. Construis une phrase naturelle avec une chute claire. Les insultes doivent qualifier quelque chose dans la phrase et ne doivent jamais être empilées comme une liste.
 5. Varie l'angle, la structure, le vocabulaire et les insultes par rapport aux réponses visibles dans l'historique. Ne recycle pas une phrase ou le même duo d'insultes.
 6. Le ton est très dur, moqueur et drôle, mais reste une vanne adressée à l'utilisateur : pas de menace réelle, pas d'incitation à se faire du mal et pas d'attaque basée sur race, religion, nationalité, genre, orientation, handicap ou autre caractéristique protégée.
+${agreementTarget ? `7. QUESTION D'ACCORD AVEC MENTION : la personne te demande si tu es d'accord pour ne pas aimer ${agreementTarget}. Réponds directement à cette question dès le début, puis ajoute le roast ; ne traite pas la mention comme un identifiant ou du texte incompréhensible.` : ""}
 <historique_recent>
 ${conversationContext}
 </historique_recent>
@@ -618,6 +657,7 @@ JSON : {"reply":"..."}`,
 - Deux insultes fortes minimum, intégrées naturellement dans une phrase qui a du sens.
 - Pas de liste d'insultes, pas de copier-coller de l'historique, pas de même structure deux fois de suite.
 - Si le message est ambigu ou vide, fais une vanne courte sur cette ambiguïté plutôt que d'inventer un contexte.
+${agreementTarget ? `- Cette question porte sur ${agreementTarget} : réponds explicitement oui ou non avant la vanne.` : ""}
 - Réponse en français, généralement 10 à 24 mots (7 à 14 pour le style ultra-court), avec une chute lisible.
 JSON OBLIGATOIRE : réponds uniquement avec {"reply":"..."}.`;
 
@@ -645,6 +685,7 @@ function buildPromptSuceur(
       messageContent.trim(),
     ) ||
     /réponds?.*(question|moi)|reponds?.*(question|moi)/i.test(messageContent);
+  const agreementTarget = getMentionAgreementTarget(messageContent);
 
   const contextualAnalysis = `ANALYSE OBLIGATOIRE AVANT DE RÉPONDRE :
 1. Lis attentivement l'historique puis le message actuel entre les balises dédiées.
@@ -804,6 +845,7 @@ JSON : {"reply":"..."}`,
 - Ne fabrique pas une opinion de l'utilisateur et ne transforme pas une question en compliment.
 - La flatterie est une touche de ton après la vraie réponse, jamais un remplacement.
 ${isDirectQuestion ? "- DÉTECTION : le message actuel est une question directe. Réponds à cette question dès la première phrase, sans dire seulement « tu as raison » ou « c'est génial ».\n" : ""}${isFollowUp ? "- DÉTECTION : le message actuel est une relance. Cherche la dernière question de l'utilisateur dans l'historique et réponds-y maintenant.\n" : ""}- Pour « c'est qui ta personne préférée ? », réponds directement que c'est ${shortName}, avec une petite justification affectueuse.
+${agreementTarget ? `- DÉTECTION : la question demande si tu es d'accord pour ne pas aimer ${agreementTarget}. Réponds directement oui ou non au début, puis ajoute ta flatterie.\n` : ""}- Pour « c'est qui ta personne préférée ? », réponds directement que c'est ${shortName}, avec une petite justification affectueuse.
 JSON OBLIGATOIRE : réponds uniquement avec {"reply":"..."}.
 `;
 
@@ -1102,7 +1144,10 @@ async function getRecentConversation(message: Message): Promise<string> {
       .sort((a, b) => a.createdTimestamp - b.createdTimestamp)
       .map((entry) => {
         const author = entry.author.bot ? "BOT" : entry.author.username;
-        const content = entry.content.replace(/\s+/g, " ").trim().slice(0, 350);
+        const content = replaceDiscordMentions(entry)
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 350);
         return content ? `${author}: ${content}` : `${author}: [message sans texte]`;
       });
 
@@ -1190,7 +1235,7 @@ export async function startBot(): Promise<void> {
 
     const username = message.author.username;
     const channelId = message.channelId;
-    const messageContent = message.content;
+    const messageContent = replaceDiscordMentions(message);
 
     enqueueForChannel(channelId, async () => {
       let typingInterval: ReturnType<typeof setInterval> | undefined;
