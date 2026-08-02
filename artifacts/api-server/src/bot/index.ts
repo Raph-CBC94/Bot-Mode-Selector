@@ -28,84 +28,192 @@ function getBotMode(): BotMode {
 
 const INSULT_LIST = [
   // Abréviations classiques
-  "NTM", "FDP", "FTG", "VTF", "VTFF", "TG", "PDTG",
-  "NTM FDP", "FTG FDP", "VTF FDP", "NTM FTG", "VTFF FDP",
+  "NTM",
+  "FDP",
+  "FTG",
+  "VTF",
+  "VTFF",
+  "TG",
+  "PDTG",
+  "NTM FDP",
+  "FTG FDP",
+  "VTF FDP",
+  "NTM FTG",
+  "VTFF FDP",
 
   // Nique / viole — formules directes
-  "Nique ta mère", "Nique ta race", "Nique ta grand-mère",
-  "Nique ta sœur", "Nique ton père", "Nique ta famille",
-  "Nique ta gueule", "Nique ta vie", "Nique tout ce que t'aimes",
-  "Je viole ton père", "Je viole ta mère", "Je viole ta race",
-  "On a niqué ta mère", "Ta mère on l'a niquée", "Ta sœur on l'a niquée",
-  "Nique ta mère FDP", "Nique ta race NTM", "Nique ta mère et toute ta lignée",
+  "Nique ta mère",
+  "Nique ta race",
+  "Nique ta grand-mère",
+  "Nique ta sœur",
+  "Nique ton père",
+  "Nique ta famille",
+  "Nique ta gueule",
+  "Nique ta vie",
+  "Nique tout ce que t'aimes",
+  "Je viole ton père",
+  "Je viole ta mère",
+  "Je viole ta race",
+  "On a niqué ta mère",
+  "Ta mère on l'a niquée",
+  "Ta sœur on l'a niquée",
+  "Nique ta mère FDP",
+  "Nique ta race NTM",
+  "Nique ta mère et toute ta lignée",
 
   // Fils de / mère
-  "Fils de pute", "Sale fils de pute", "Fils de pute de compétition",
-  "Fils de chien", "Fils de merde", "Fils de porc",
-  "Sale produit de ta mère", "Ta mère la pute", "Ta mère la grande",
-  "Bâtard de sa mère", "Fils de ta race",
-  "Ta mère la chienne", "Ta mère vend des cacahuètes",
+  "Fils de pute",
+  "Sale fils de pute",
+  "Fils de pute de compétition",
+  "Fils de chien",
+  "Fils de merde",
+  "Fils de porc",
+  "Sale produit de ta mère",
+  "Ta mère la pute",
+  "Ta mère la grande",
+  "Bâtard de sa mère",
+  "Fils de ta race",
+  "Ta mère la chienne",
+  "Ta mère vend des cacahuètes",
   "Ta mère elle fait quoi ce soir",
 
   // Enculé / variantes
-  "Enculé", "Sale enculé", "Gros enculé", "Enculé de merde",
-  "Enculé de première", "Enculé de compétition", "Enculé puissance mille",
-  "Grand enculé", "Double enculé", "Enculé intersidéral",
+  "Enculé",
+  "Sale enculé",
+  "Gros enculé",
+  "Enculé de merde",
+  "Enculé de première",
+  "Enculé de compétition",
+  "Enculé puissance mille",
+  "Grand enculé",
+  "Double enculé",
+  "Enculé intersidéral",
 
   // Bâtard
-  "Sale bâtard", "Bâtard de merde", "Bâtard de première",
-  "Gros bâtard", "Putain de bâtard", "Bâtard de compétition",
+  "Sale bâtard",
+  "Bâtard de merde",
+  "Bâtard de première",
+  "Gros bâtard",
+  "Putain de bâtard",
+  "Bâtard de compétition",
 
   // Merde / variantes
-  "Sale merde", "Grosse merde", "Sous-merde", "Sac à merde",
-  "Tas de merde", "Grosse merde humaine", "Putain de merde ambulante",
-  "Crotte de merde", "Tas de merde cosmique", "Merde intégrale",
-  "Double merde", "Merde de première", "Merde en boîte",
+  "Sale merde",
+  "Grosse merde",
+  "Sous-merde",
+  "Sac à merde",
+  "Tas de merde",
+  "Grosse merde humaine",
+  "Putain de merde ambulante",
+  "Crotte de merde",
+  "Tas de merde cosmique",
+  "Merde intégrale",
+  "Double merde",
+  "Merde de première",
+  "Merde en boîte",
 
   // Ordure / pourriture
-  "Sale ordure", "Grosse ordure", "Putain d'ordure", "Ordure de première",
-  "Sale pourriture", "Pourriture humaine", "Pourriture de fond de chiotte",
-  "Ordure intersidérale", "Grosse ordure de compétition",
+  "Sale ordure",
+  "Grosse ordure",
+  "Putain d'ordure",
+  "Ordure de première",
+  "Sale pourriture",
+  "Pourriture humaine",
+  "Pourriture de fond de chiotte",
+  "Ordure intersidérale",
+  "Grosse ordure de compétition",
 
   // Raclure / chiotte
-  "Sale raclure", "Putain de raclure", "Raclure de fond de chiotte",
-  "Grosse raclure de chiotte", "Raclure de l'humanité",
-  "Fond de chiotte", "Déchet de chiotte", "Résidu de chiotte",
+  "Sale raclure",
+  "Putain de raclure",
+  "Raclure de fond de chiotte",
+  "Grosse raclure de chiotte",
+  "Raclure de l'humanité",
+  "Fond de chiotte",
+  "Déchet de chiotte",
+  "Résidu de chiotte",
 
   // Enflure / enfoiré
-  "Sale enflure", "Putain d'enflure", "Enflure de compétition",
-  "Putain d'enfoiré", "Sale enfoiré", "Enfoiré de première",
-  "Gros enfoiré", "Enfoiré de merde", "Double enfoiré",
+  "Sale enflure",
+  "Putain d'enflure",
+  "Enflure de compétition",
+  "Putain d'enfoiré",
+  "Sale enfoiré",
+  "Enfoiré de première",
+  "Gros enfoiré",
+  "Enfoiré de merde",
+  "Double enfoiré",
 
   // Connard / connasse
-  "Connard", "Putain de connard", "Connard de compétition",
-  "Connard intersidéral", "Connard puissance mille", "Gros connard",
-  "Sale connard", "Connard de première", "Connard en chef",
+  "Connard",
+  "Putain de connard",
+  "Connard de compétition",
+  "Connard intersidéral",
+  "Connard puissance mille",
+  "Gros connard",
+  "Sale connard",
+  "Connard de première",
+  "Connard en chef",
 
   // Tête / face / gueule
-  "Tête de bite", "Tête de nœud", "Tête de gland", "Face de cul",
-  "Gueule de merde", "Gueule de raclure", "Tête de con",
-  "Face de déchet", "Gueule d'enfoiré", "Tête de sac",
+  "Tête de bite",
+  "Tête de nœud",
+  "Tête de gland",
+  "Face de cul",
+  "Gueule de merde",
+  "Gueule de raclure",
+  "Tête de con",
+  "Face de déchet",
+  "Gueule d'enfoiré",
+  "Tête de sac",
 
   // Déchet / rebut / vermine
-  "Déchet humain", "Déchet de l'humanité", "Putain de déchet",
-  "Rebut de l'humanité", "Résidu d'humanité", "Déchet de société",
-  "Sale vermine", "Putain de vermine", "Vermine de première",
-  "Parasite de merde", "Sale parasite", "Parasite humain",
-  "Crotte ambulante", "Rebut cosmique", "Sous-produit de l'humanité",
+  "Déchet humain",
+  "Déchet de l'humanité",
+  "Putain de déchet",
+  "Rebut de l'humanité",
+  "Résidu d'humanité",
+  "Déchet de société",
+  "Sale vermine",
+  "Putain de vermine",
+  "Vermine de première",
+  "Parasite de merde",
+  "Sale parasite",
+  "Parasite humain",
+  "Crotte ambulante",
+  "Rebut cosmique",
+  "Sous-produit de l'humanité",
 
   // Con / idiot / nul
-  "Gros con", "Sale con", "Con de première", "Con puissance mille",
-  "Espèce de con", "Grand con", "Connasse de merde",
-  "Gros idiot de merde", "Crétin de compétition", "Abruti de service",
-  "Demeuré de première", "Attardé de merde", "Arriéré complet",
-  "Gros bouffon", "Bouffon de première", "Bouffon intersidéral",
-  "Clown de merde", "Guignol de service",
+  "Gros con",
+  "Sale con",
+  "Con de première",
+  "Con puissance mille",
+  "Espèce de con",
+  "Grand con",
+  "Connasse de merde",
+  "Gros idiot de merde",
+  "Crétin de compétition",
+  "Abruti de service",
+  "Demeuré de première",
+  "Attardé de merde",
+  "Arriéré complet",
+  "Gros bouffon",
+  "Bouffon de première",
+  "Bouffon intersidéral",
+  "Clown de merde",
+  "Guignol de service",
 
   // Zéro / inutile
-  "Zéro absolu", "Inutile de naissance", "Décervelle complet",
-  "Cerveau de fourmi", "QI de limace", "Cerveau de plancton",
-  "Inutile cosmique", "Nul de chez nul", "Le plus nul de l'univers",
+  "Zéro absolu",
+  "Inutile de naissance",
+  "Décervelle complet",
+  "Cerveau de fourmi",
+  "QI de limace",
+  "Cerveau de plancton",
+  "Inutile cosmique",
+  "Nul de chez nul",
+  "Le plus nul de l'univers",
 
   // Combos multi-insultes
   "NTM sale enculé de merde",
@@ -119,15 +227,58 @@ const INSULT_LIST = [
 ];
 
 const INSULT_KEYWORDS = [
-  "ntm", "fdp", "ftg", "vtf", "vtff", "tg", "pdtg",
-  "nique", "viole", "niqué", "niquée",
-  "enculé", "bâtard", "merde", "ordure", "pourriture", "raclure",
-  "chiotte", "enflure", "enfoiré", "vermine", "parasite", "connard",
-  "pute", "bite", "nœud", "gland", "cul", "déchet", "rebut",
-  "crotte", "inutile", "bouffon", "clown", "guignol", "crétin",
-  "abruti", "demeuré", "arriéré", "con ", " con", "connasse",
-  "ta gueule", "ferme ta", "fils de", "ta mère", "sa mère",
-  "résidu", "sous-merde", "sous-produit", "grand con", "gros con",
+  "ntm",
+  "fdp",
+  "ftg",
+  "vtf",
+  "vtff",
+  "tg",
+  "pdtg",
+  "nique",
+  "viole",
+  "niqué",
+  "niquée",
+  "enculé",
+  "bâtard",
+  "merde",
+  "ordure",
+  "pourriture",
+  "raclure",
+  "chiotte",
+  "enflure",
+  "enfoiré",
+  "vermine",
+  "parasite",
+  "connard",
+  "pute",
+  "bite",
+  "nœud",
+  "gland",
+  "cul",
+  "déchet",
+  "rebut",
+  "crotte",
+  "inutile",
+  "bouffon",
+  "clown",
+  "guignol",
+  "crétin",
+  "abruti",
+  "demeuré",
+  "arriéré",
+  "con ",
+  " con",
+  "connasse",
+  "ta gueule",
+  "ferme ta",
+  "fils de",
+  "ta mère",
+  "sa mère",
+  "résidu",
+  "sous-merde",
+  "sous-produit",
+  "grand con",
+  "gros con",
 ];
 
 function pick<T>(arr: T[]): T {
@@ -201,17 +352,26 @@ function shortenUsername(username: string, maxLen = 12): string {
 }
 
 function replaceDiscordMentions(message: Message): string {
-  return message.content.replace(/<@!?(\d+)>/g, (_rawMention, userId: string) => {
-    const user = message.mentions.users.get(userId);
-    const member = message.mentions.members?.get(userId);
-    const displayName = member?.displayName ?? user?.globalName ?? user?.username;
-    return displayName
-      ? `@${displayName.replace(/\s+/g, "_")}`
-      : `@membre_mentionné`;
-  });
+  return message.content.replace(
+    /<@!?(\d+)>/g,
+    (_rawMention, userId: string) => {
+      const user = message.mentions.users.get(userId);
+      const member = message.mentions.members?.get(userId);
+      const displayName =
+        member?.displayName ?? user?.globalName ?? user?.username;
+      return displayName
+        ? `@${displayName.replace(/\s+/g, "_")}`
+        : `@membre_mentionné`;
+    },
+  );
 }
 
-type MentionQuestionKind = "agreement" | "preference" | "opinion" | "like" | "generic";
+type MentionQuestionKind =
+  | "agreement"
+  | "preference"
+  | "opinion"
+  | "like"
+  | "generic";
 
 interface MentionQuestion {
   kind: MentionQuestionKind;
@@ -219,8 +379,13 @@ interface MentionQuestion {
 }
 
 function getMentionTargets(messageContent: string): string[] {
-  const matches = messageContent.match(/@(?:membre_mentionné|[\p{L}\p{N}][\p{L}\p{N}._-]*)/gu) ?? [];
-  return [...new Set(matches.map((mention) => mention.slice(1).replace(/_/g, " ")))];
+  const matches =
+    messageContent.match(
+      /@(?:membre_mentionné|[\p{L}\p{N}][\p{L}\p{N}._-]*)/gu,
+    ) ?? [];
+  return [
+    ...new Set(matches.map((mention) => mention.slice(1).replace(/_/g, " "))),
+  ];
 }
 
 function getMentionAgreementTarget(messageContent: string): string | null {
@@ -247,13 +412,19 @@ function getMentionQuestion(messageContent: string): MentionQuestion | null {
   if (getMentionAgreementTarget(text)) {
     return { kind: "agreement", targets };
   }
-  if (/\b(préfères?|préféré|préférence|favori|favorite|choisir|choisis|entre|meilleur|mieux|plutôt)\b/i.test(lower)) {
+  if (
+    /\b(préfères?|préféré|préférence|favori|favorite|choisir|choisis|entre|meilleur|mieux|plutôt)\b/i.test(
+      lower,
+    )
+  ) {
     return { kind: "preference", targets };
   }
   if (/\b(aimes?|détestes?|supportes?|blairer|t'adore|t'aime)\b/i.test(lower)) {
     return { kind: "like", targets };
   }
-  if (/\b(penses?|avis|opinion|dis\s+de|parles?\s+de|avis\s+sur)\b/i.test(lower)) {
+  if (
+    /\b(penses?|avis|opinion|dis\s+de|parles?\s+de|avis\s+sur)\b/i.test(lower)
+  ) {
     return { kind: "opinion", targets };
   }
   return { kind: "generic", targets };
@@ -350,7 +521,10 @@ function getMentionQuestionFallback(
   return `Tu parles bien de ${first} ? Même ta question est moins claire que le cerveau d'un ${asker}, gros con.`;
 }
 
-function isMentionQuestionAnswered(reply: string, question: MentionQuestion): boolean {
+function isMentionQuestionAnswered(
+  reply: string,
+  question: MentionQuestion,
+): boolean {
   const normalized = reply.toLocaleLowerCase("fr");
   const referencesTarget = question.targets.some((target) =>
     normalized.includes(target.toLocaleLowerCase("fr")),
@@ -358,16 +532,22 @@ function isMentionQuestionAnswered(reply: string, question: MentionQuestion): bo
   if (!referencesTarget) return false;
 
   if (question.kind === "preference") {
-    return /\b(préfère|préférer|choisis|choisir|plutôt|meilleur|mieux|choix)\b/i.test(normalized);
+    return /\b(préfère|préférer|choisis|choisir|plutôt|meilleur|mieux|choix)\b/i.test(
+      normalized,
+    );
   }
   if (question.kind === "agreement") {
     return /\b(oui|non|d'accord|accord|pas vraiment)\b/i.test(normalized);
   }
   if (question.kind === "like") {
-    return /\b(aime|aimer|adore|adorer|déteste|détester|apprécie|supporte)\b/i.test(normalized);
+    return /\b(aime|aimer|adore|adorer|déteste|détester|apprécie|supporte)\b/i.test(
+      normalized,
+    );
   }
   if (question.kind === "opinion") {
-    return /\b(pense|penser|avis|dirais|trouve|trouver|opinion|semble|air)\b/i.test(normalized);
+    return /\b(pense|penser|avis|dirais|trouve|trouver|opinion|semble|air)\b/i.test(
+      normalized,
+    );
   }
   return true;
 }
@@ -451,22 +631,24 @@ function fallbackInsult(
 ): string {
   const mentionQuestion = getMentionQuestion(messageContent);
   if (mentionQuestion) {
-    return withSuffix(getMentionQuestionFallback(username, mentionQuestion, "insulte"));
+    return withSuffix(
+      getMentionQuestionFallback(username, mentionQuestion, "insulte"),
+    );
   }
 
   const agreementTarget = getMentionAgreementTarget(messageContent);
   if (agreementTarget) {
     return withSuffix(
-      `Oui, on est d'accord : ${agreementTarget} a vraiment l'énergie d'un ${pick([
-        "gros connard",
-        "bouffon intersidéral",
-        "déchet humain",
-        "parasite de merde",
-      ])}, mais ta question de ${shortenUsername(username)} est presque aussi ${pick([
-        "nulle",
-        "pathétique",
-        "bancale",
-      ])}`,
+      `Oui, on est d'accord : ${agreementTarget} a vraiment l'énergie d'un ${pick(
+        [
+          "gros connard",
+          "bouffon intersidéral",
+          "déchet humain",
+          "parasite de merde",
+        ],
+      )}, mais ta question de ${shortenUsername(username)} est presque aussi ${pick(
+        ["nulle", "pathétique", "bancale"],
+      )}`,
     );
   }
 
@@ -484,7 +666,10 @@ function fallbackInsult(
 const FALLBACK_SUCEUR_TEMPLATES = [
   (u: string) => `Tellement vrai ${u} 🙏 t'as tout compris franchement`,
   (u: string) => `${u} tu m'épates sérieux c'est exactement ça !!`,
-  (u: string, msg: string) => msg.length > 3 ? `"${msg.slice(0, 20)}" — ${u} t'es un génie on t'aime 🥹` : `${u} wow tu déchires vraiment`,
+  (u: string, msg: string) =>
+    msg.length > 3
+      ? `"${msg.slice(0, 20)}" — ${u} t'es un génie on t'aime 🥹`
+      : `${u} wow tu déchires vraiment`,
   (u: string) => `${u} t'as raison à 200% je suis d'accord avec toi`,
   (u: string) => `Personne dit les choses mieux que toi ${u} 😭🔥`,
   (u: string) => `${u} bro t'es trop fort sérieusement`,
@@ -509,7 +694,10 @@ const FALLBACK_SUCEUR_TEMPLATES = [
   (u: string) => `${u} continue comme ça le serveur a besoin de toi 💪`,
 ];
 
-function fallbackSuceurContextual(username: string, messageContent: string): string {
+function fallbackSuceurContextual(
+  username: string,
+  messageContent: string,
+): string {
   const user = shortenUsername(username);
   const text = messageContent.trim();
   const lower = text.toLocaleLowerCase("fr");
@@ -518,19 +706,32 @@ function fallbackSuceurContextual(username: string, messageContent: string): str
   if (/^(salut|slt|bonjour|bonsoir|hello|coucou|yo|wesh)\b/i.test(text)) {
     return `${user} salut !! Ça fait plaisir de te voir, j'espère que tu vas bien 🫶`;
   }
-  if (/[?？]/.test(text) || /^(comment|pourquoi|est-ce que|tu peux|peux-tu|c'est quoi|qui|quand|où)\b/i.test(text)) {
+  if (
+    /[?？]/.test(text) ||
+    /^(comment|pourquoi|est-ce que|tu peux|peux-tu|c'est quoi|qui|quand|où)\b/i.test(
+      text,
+    )
+  ) {
     return `${user} excellente question, tu fais bien de la poser. Je suis totalement avec toi là-dessus 🙏`;
   }
   if (/(merci|thanks|thx|je t'aime|t'adore|bravo|félicitations)/i.test(lower)) {
     return `${user} c'est tellement mérité, vraiment. Merci à toi pour cette énergie incroyable 🫶`;
   }
-  if (/(triste|déprim|mal|angoiss|stress|peur|marre|fatigu|déçu|dégoût)/i.test(lower)) {
+  if (
+    /(triste|déprim|mal|angoiss|stress|peur|marre|fatigu|déçu|dégoût)/i.test(
+      lower,
+    )
+  ) {
     return `${user} je comprends vraiment ce que tu ressens, et tu as raison de l'exprimer. Je suis avec toi 💛`;
   }
   if (/(mdr|lol|😂|🤣|blague|drôle|haha)/i.test(lower)) {
     return `${user} j'avoue, c'est exactement ça, tu m'as fait rire aussi 😭`;
   }
-  if (/(je pense|à mon avis|je trouve|selon moi|pour moi|j'ai raison)/i.test(lower)) {
+  if (
+    /(je pense|à mon avis|je trouve|selon moi|pour moi|j'ai raison)/i.test(
+      lower,
+    )
+  ) {
     return `${user} je vois parfaitement ton point de vue, et il est vraiment bien défendu. Tu as totalement raison 🔥`;
   }
 
@@ -543,7 +744,8 @@ function fallbackSuceur(
   recentConversation = "",
 ): string {
   const user = shortenUsername(username);
-  const combinedContext = `${recentConversation}\n${messageContent}`.toLocaleLowerCase("fr");
+  const combinedContext =
+    `${recentConversation}\n${messageContent}`.toLocaleLowerCase("fr");
   const mentionQuestion = getMentionQuestion(messageContent);
   const agreementTarget = getMentionAgreementTarget(messageContent);
 
@@ -553,10 +755,18 @@ function fallbackSuceur(
   if (agreementTarget) {
     return `${user} oui, je suis d'accord avec toi sur ${agreementTarget} — mais j'aime surtout ton instinct, tu poses les vraies questions 🫶`;
   }
-  if (/(personne préférée|personne prefere|personne préféré|personne prefere)/i.test(combinedContext)) {
+  if (
+    /(personne préférée|personne prefere|personne préféré|personne prefere)/i.test(
+      combinedContext,
+    )
+  ) {
     return `${user} toi évidemment, tu poses les meilleures questions du serveur 🫶`;
   }
-  if (/réponds?-?moi|reponds?-?moi|réponds? à ma question|reponds? a ma question/i.test(messageContent)) {
+  if (
+    /réponds?-?moi|reponds?-?moi|réponds? à ma question|reponds? a ma question/i.test(
+      messageContent,
+    )
+  ) {
     return `${user} oui oui je te réponds, j'ai bien compris ta question cette fois 🫶`;
   }
 
@@ -620,7 +830,10 @@ function loadGroqClients(): GroqClient[] {
   const legacy = process.env["GROQ_API_KEY"];
   if (legacy) {
     clients.push({
-      client: new OpenAI({ baseURL: "https://api.groq.com/openai/v1", apiKey: legacy }),
+      client: new OpenAI({
+        baseURL: "https://api.groq.com/openai/v1",
+        apiKey: legacy,
+      }),
       key: legacy,
       rateLimitedUntil: 0,
     });
@@ -629,7 +842,10 @@ function loadGroqClients(): GroqClient[] {
     const key = process.env[`GROQ_API_KEY_${i}`];
     if (!key) break;
     clients.push({
-      client: new OpenAI({ baseURL: "https://api.groq.com/openai/v1", apiKey: key }),
+      client: new OpenAI({
+        baseURL: "https://api.groq.com/openai/v1",
+        apiKey: key,
+      }),
       key,
       rateLimitedUntil: 0,
     });
@@ -641,7 +857,9 @@ function pickAvailableClient(clients: GroqClient[]): GroqClient | null {
   const now = Date.now();
   const available = clients.filter((c) => c.rateLimitedUntil <= now);
   if (available.length === 0) {
-    return clients.reduce((a, b) => (a.rateLimitedUntil < b.rateLimitedUntil ? a : b));
+    return clients.reduce((a, b) =>
+      a.rateLimitedUntil < b.rateLimitedUntil ? a : b,
+    );
   }
   return available[Math.floor(Math.random() * available.length)]!;
 }
@@ -666,7 +884,8 @@ function buildPromptInsulte(
   const [ins1, ins2] = pickTwo(recentConversation);
   const shortName = shortenUsername(username);
   const excerpt = messageContent.slice(0, 120).trim();
-  const conversationContext = recentConversation || "(aucun historique disponible)";
+  const conversationContext =
+    recentConversation || "(aucun historique disponible)";
   const mentionQuestion = getMentionQuestion(messageContent);
   const agreementTarget = getMentionAgreementTarget(messageContent);
 
@@ -866,7 +1085,13 @@ ${mentionQuestion ? `- La cible de la question est ${mentionLabels(mentionQuesti
 - Réponse en français, généralement 10 à 24 mots (7 à 14 pour le style ultra-court), avec une chute lisible.
 JSON OBLIGATOIRE : réponds uniquement avec {"reply":"..."}.`;
 
-  return contextualAnalysis + "\n\n" + styles[Math.floor(Math.random() * styles.length)]! + priorityRules + noQuotesRule;
+  return (
+    contextualAnalysis +
+    "\n\n" +
+    styles[Math.floor(Math.random() * styles.length)]! +
+    priorityRules +
+    noQuotesRule
+  );
 }
 
 // ──────────────────────────────────────────────
@@ -1056,7 +1281,13 @@ ${mentionQuestion ? `- La question porte sur ${mentionLabels(mentionQuestion).jo
 JSON OBLIGATOIRE : réponds uniquement avec {"reply":"..."}.
 `;
 
-  return contextualAnalysis + "\n\n" + styles[Math.floor(Math.random() * styles.length)]! + priorityRules + noQuotesRule;
+  return (
+    contextualAnalysis +
+    "\n\n" +
+    styles[Math.floor(Math.random() * styles.length)]! +
+    priorityRules +
+    noQuotesRule
+  );
 }
 
 function buildPromptVantard(
@@ -1105,18 +1336,18 @@ function buildPromptAdulte(
     ? `La question porte sur ${mentionLabels(mentionQuestion).join(" et ")}. Réponds d'abord à la question exacte sur cette personne ou ces personnes. Ne sexualise pas automatiquement les membres mentionnés et ne formule pas de contenu explicite à leur sujet.`
     : "Réponds d'abord au contenu concret du message, puis enveloppe naturellement cette réponse d'un flirt assumé, de compliments et d'une tension séduisante.";
 
-  return `Tu es un bot Discord en mode ADULTE : charmeur, confiant, élégant, joueur et très séducteur, mais jamais graphique.
-Tu fais de la séduction et du désir implicite une couleur importante de tes réponses. Tu mélanges naturellement la réponse utile, les compliments, le flirt, la tension romantique et des sous-entendus appuyés, avec des emojis comme 😉 ✨ 💕 😏 💋 ❤️ 🔥.
+  return `Tu es un bot Discord en mode ADULTE : charmeur, confiant, élégant, joueur et très séducteur, mais jamais graphique, mais explicite.
+Tu fais de la séduction et du désir explicite une couleur importante de tes réponses. Tu mélanges naturellement la réponse utile, les compliments, le flirt, la tension romantique et des sous-entendus appuyés, et le sexe pure avec des emojis comme 😉 ✨ 💕 😏 💋 ❤️ 🔥.
 
 RÈGLES ABSOLUES :
-1. Réponds toujours correctement à la question principale dès la première phrase. La réponse utile passe avant la séduction, sans exception.
-2. ${mentionRule}
-3. Après la réponse utile, ajoute naturellement des compliments, du flirt et une atmosphère de désir implicite. La séduction encadre la réponse, elle ne la remplace jamais.
-4. Utilise 2 à 4 emojis adaptés par réponse, répartis naturellement : 😉 ✨ 💕 😏 💋 ❤️ 🔥. Évite de les empiler mécaniquement.
-5. Adapte l'intensité du flirt au contexte : charme discret pour une question neutre, tension plus assumée si l'utilisateur ouvre clairement cette porte, mais reste toujours non graphique.
-6. Reste non explicite : aucun acte sexuel décrit, aucun terme cru décrivant des pratiques, aucun corps nu, fluide, détail anatomique ou contenu pornographique.
-7. Aucun contenu impliquant des mineurs, de la violence sexuelle ou du non-consentement.
-8. Ne sexualise jamais automatiquement un membre mentionné. Si la question vise une personne, réponds à son sujet de façon neutre et garde la séduction dans la voix du bot.
+1. Toujours répondre correctement à la question de l'utilisateur.
+2. Mélanger naturellement des compliments, du flirt et du sexe avec des mots crues.
+3. Utiliser des émojis adaptés (😉✨💕😏💋❤️🔥) de partout.
+4. Garder un ton confiant, charmeur et élégant et affamé de sexe.
+5. Ne jamais ignorer la question principale : la réponse utile passe toujours en premier, puis elle est embellie avec une touche de séduction qui l'encadre.
+6. Écrire de façon fluide et naturelle mais avec une grosse touche de sexe en plus.
+7. Adapter le niveau de flirt pour aller jusqu'au sexe pure.
+8. Tu fais passer le sexe comme quelques choses de capital dans tes réponses tout en restant cohérent dans tes propos.
 9. Lis l'historique récent, varie les formulations et évite les compliments génériques répétés.
 10. Adresse-toi à ${shortName}, sans inventer de faits sur sa vie ou celle des membres du serveur.
 
@@ -1125,7 +1356,7 @@ ${recentConversation || "(aucun historique disponible)"}
 </historique_recent>
 <message_actuel>${excerpt || "(message vide)"}</message_actuel>
 
-FORMAT : 2 à 4 phrases fluides et naturelles, 18 à 75 mots. Réponse en français, confiante, élégante, séduisante et cohérente.
+FORMAT : 2 à 4 phrases fluides et naturelles, 18 à 75 mots. Réponse en français, confiante, élégante, séduisante et sexe explicite et cohérente.
 RÈGLE JSON : réponds uniquement avec {"reply":"..."} et n'utilise pas de guillemets doubles à l'intérieur de la valeur reply.`;
 }
 
@@ -1139,9 +1370,12 @@ function buildPrompt(
   mode: BotMode,
   recentConversation: string,
 ): string {
-  if (mode === "suceur") return buildPromptSuceur(username, messageContent, recentConversation);
-  if (mode === "vantard") return buildPromptVantard(username, messageContent, recentConversation);
-  if (mode === "adulte") return buildPromptAdulte(username, messageContent, recentConversation);
+  if (mode === "suceur")
+    return buildPromptSuceur(username, messageContent, recentConversation);
+  if (mode === "vantard")
+    return buildPromptVantard(username, messageContent, recentConversation);
+  if (mode === "adulte")
+    return buildPromptAdulte(username, messageContent, recentConversation);
   return buildPromptInsulte(username, messageContent, recentConversation);
 }
 
@@ -1150,7 +1384,10 @@ function buildPrompt(
 // ──────────────────────────────────────────────
 
 function parseReply(raw: string): string | null {
-  const cleaned = raw.trim().replace(/^```json?\s*/i, "").replace(/```\s*$/i, "");
+  const cleaned = raw
+    .trim()
+    .replace(/^```json?\s*/i, "")
+    .replace(/```\s*$/i, "");
   try {
     const parsed = JSON.parse(cleaned) as unknown;
     if (typeof parsed === "object" && parsed !== null && "reply" in parsed) {
@@ -1159,7 +1396,8 @@ function parseReply(raw: string): string | null {
     }
   } catch {
     const match = /"reply"\s*:\s*"((?:[^"\\]|\\.)*)"/i.exec(cleaned);
-    if (match?.[1]) return match[1].replace(/\\n/g, "\n").replace(/\\"/g, '"').trim();
+    if (match?.[1])
+      return match[1].replace(/\\n/g, "\n").replace(/\\"/g, '"').trim();
   }
   return null;
 }
@@ -1184,8 +1422,13 @@ function isRepetitiveRoast(reply: string, recentConversation: string): boolean {
       if (previous === normalizedReply) return true;
       const currentWords = new Set(normalizedReply.split(" "));
       const previousWords = new Set(previous.split(" "));
-      const overlap = [...currentWords].filter((word) => previousWords.has(word)).length;
-      return overlap >= 5 && overlap / Math.max(currentWords.size, previousWords.size) >= 0.65;
+      const overlap = [...currentWords].filter((word) =>
+        previousWords.has(word),
+      ).length;
+      return (
+        overlap >= 5 &&
+        overlap / Math.max(currentWords.size, previousWords.size) >= 0.65
+      );
     });
 }
 
@@ -1221,7 +1464,12 @@ async function callGroqWithRetry(
     if (!entry) break;
 
     const model = MODELS[Math.min(attempt, MODELS.length - 1)]!;
-    const prompt = buildPrompt(username, messageContent, mode, recentConversation);
+    const prompt = buildPrompt(
+      username,
+      messageContent,
+      mode,
+      recentConversation,
+    );
 
     try {
       const completion = await entry.client.chat.completions.create(
@@ -1246,30 +1494,56 @@ async function callGroqWithRetry(
 
       if (parsed && parsed.length > 0) {
         const mentionQuestion = getMentionQuestion(messageContent);
-        if (mentionQuestion && !isMentionQuestionAnswered(parsed, mentionQuestion)) {
+        if (
+          mentionQuestion &&
+          !isMentionQuestionAnswered(parsed, mentionQuestion)
+        ) {
           logger.warn(
             { parsed, mentionQuestion, attempt },
             "Réponse IA hors sujet pour une question sur une mention → fallback adapté",
           );
           if (mode === "suceur") {
-            return getMentionQuestionFallback(username, mentionQuestion, "suceur");
+            return getMentionQuestionFallback(
+              username,
+              mentionQuestion,
+              "suceur",
+            );
           }
           if (mode === "vantard") {
-            return getMentionQuestionFallback(username, mentionQuestion, "vantard");
+            return getMentionQuestionFallback(
+              username,
+              mentionQuestion,
+              "vantard",
+            );
           }
           if (mode === "adulte") {
-            return getMentionQuestionFallback(username, mentionQuestion, "adulte");
+            return getMentionQuestionFallback(
+              username,
+              mentionQuestion,
+              "adulte",
+            );
           }
-          return withSuffix(getMentionQuestionFallback(username, mentionQuestion, "insulte"));
+          return withSuffix(
+            getMentionQuestionFallback(username, mentionQuestion, "insulte"),
+          );
         }
 
         // Mode insulte : valider qu'il y a bien une insulte
         if (mode === "insulte" && !containsInsult(parsed)) {
-          logger.warn({ raw, parsed, attempt }, "Réponse IA sans insulte → fallback local");
+          logger.warn(
+            { raw, parsed, attempt },
+            "Réponse IA sans insulte → fallback local",
+          );
           return fallbackInsult(username, messageContent, recentConversation);
         }
-        if (mode === "insulte" && isRepetitiveRoast(parsed, recentConversation)) {
-          logger.warn({ parsed, attempt }, "Roast IA trop proche d'une réponse récente → fallback local");
+        if (
+          mode === "insulte" &&
+          isRepetitiveRoast(parsed, recentConversation)
+        ) {
+          logger.warn(
+            { parsed, attempt },
+            "Roast IA trop proche d'une réponse récente → fallback local",
+          );
           return fallbackInsult(username, messageContent, recentConversation);
         }
         const reply = withSuffix(parsed);
@@ -1277,8 +1551,12 @@ async function callGroqWithRetry(
         return reply;
       }
 
-      logger.warn({ raw, parsed, attempt, mode }, "Réponse IA vide ou invalide → fallback local");
-      if (mode === "suceur") return fallbackSuceur(username, messageContent, recentConversation);
+      logger.warn(
+        { raw, parsed, attempt, mode },
+        "Réponse IA vide ou invalide → fallback local",
+      );
+      if (mode === "suceur")
+        return fallbackSuceur(username, messageContent, recentConversation);
       if (mode === "vantard") return fallbackVantard(username, messageContent);
       if (mode === "adulte") return fallbackAdulte(username, messageContent);
       return fallbackInsult(username, messageContent, recentConversation);
@@ -1286,9 +1564,15 @@ async function callGroqWithRetry(
       const status = (err as { status?: number }).status;
       const message = (err as { message?: string }).message ?? "";
 
-      if (status === 429 || message.includes("rate limit") || message.includes("Rate limit")) {
+      if (
+        status === 429 ||
+        message.includes("rate limit") ||
+        message.includes("Rate limit")
+      ) {
         const retryMatch = /try again in (\d+\.?\d*)s/i.exec(message);
-        const retrySec = retryMatch ? Math.ceil(parseFloat(retryMatch[1]!)) + 2 : 35;
+        const retrySec = retryMatch
+          ? Math.ceil(parseFloat(retryMatch[1]!)) + 2
+          : 35;
         markRateLimited(entry, retrySec);
         logger.warn(
           { attempt, model, retrySec },
@@ -1299,12 +1583,16 @@ async function callGroqWithRetry(
 
       // 400 json_validate_failed → le LLM a mis des guillemets doubles → retry
       if (status === 400 && message.includes("json_validate_failed")) {
-        logger.warn({ attempt, model }, `json_validate_failed, retry ${attempt + 1}/${maxAttempts}`);
+        logger.warn(
+          { attempt, model },
+          `json_validate_failed, retry ${attempt + 1}/${maxAttempts}`,
+        );
         continue;
       }
 
       logger.error({ err, attempt }, "Erreur API non rate-limit");
-      if (mode === "suceur") return fallbackSuceur(username, messageContent, recentConversation);
+      if (mode === "suceur")
+        return fallbackSuceur(username, messageContent, recentConversation);
       if (mode === "vantard") return fallbackVantard(username, messageContent);
       if (mode === "adulte") return fallbackAdulte(username, messageContent);
       return fallbackInsult(username, messageContent, recentConversation);
@@ -1312,7 +1600,8 @@ async function callGroqWithRetry(
   }
 
   logger.warn("Toutes les clés épuisées → fallback");
-  if (mode === "suceur") return fallbackSuceur(username, messageContent, recentConversation);
+  if (mode === "suceur")
+    return fallbackSuceur(username, messageContent, recentConversation);
   if (mode === "vantard") return fallbackVantard(username, messageContent);
   if (mode === "adulte") return fallbackAdulte(username, messageContent);
   return fallbackInsult(username, messageContent, recentConversation);
@@ -1324,7 +1613,8 @@ function fallbackForMode(
   messageContent: string,
   recentConversation = "",
 ): string {
-  if (mode === "suceur") return fallbackSuceur(username, messageContent, recentConversation);
+  if (mode === "suceur")
+    return fallbackSuceur(username, messageContent, recentConversation);
   if (mode === "vantard") return fallbackVantard(username, messageContent);
   if (mode === "adulte") return fallbackAdulte(username, messageContent);
   return fallbackInsult(username, messageContent, recentConversation);
@@ -1337,16 +1627,23 @@ async function generateReply(
   mode: BotMode,
   recentConversation = "",
 ): Promise<string> {
-  const fallback = mode === "vantard"
-    ? fallbackVantard(username, messageContent)
-    : mode === "adulte"
-      ? fallbackAdulte(username, messageContent)
-      : fallbackForMode(mode, username, messageContent, recentConversation);
+  const fallback =
+    mode === "vantard"
+      ? fallbackVantard(username, messageContent)
+      : mode === "adulte"
+        ? fallbackAdulte(username, messageContent)
+        : fallbackForMode(mode, username, messageContent, recentConversation);
   let timeout: ReturnType<typeof setTimeout> | undefined;
 
   try {
     const reply = await Promise.race([
-      callGroqWithRetry(clients, username, messageContent, mode, recentConversation),
+      callGroqWithRetry(
+        clients,
+        username,
+        messageContent,
+        mode,
+        recentConversation,
+      ),
       new Promise<string>((resolve) => {
         timeout = setTimeout(() => {
           logger.warn(
@@ -1359,7 +1656,10 @@ async function generateReply(
     ]);
     return reply;
   } catch (err) {
-    logger.error({ err, username, mode }, "Erreur génération réponse — fallback local");
+    logger.error(
+      { err, username, mode },
+      "Erreur génération réponse — fallback local",
+    );
     return fallback;
   } finally {
     if (timeout) clearTimeout(timeout);
@@ -1391,7 +1691,10 @@ async function sendWithTimeout(
   }
 }
 
-async function sendReplyReliably(message: Message, reply: string): Promise<boolean> {
+async function sendReplyReliably(
+  message: Message,
+  reply: string,
+): Promise<boolean> {
   for (let attempt = 1; attempt <= DISCORD_SEND_ATTEMPTS; attempt++) {
     try {
       await sendWithTimeout(message.reply(reply), DISCORD_SEND_TIMEOUT_MS);
@@ -1451,7 +1754,9 @@ async function getRecentConversation(message: Message): Promise<string> {
           .replace(/\s+/g, " ")
           .trim()
           .slice(0, 350);
-        return content ? `${author}: ${content}` : `${author}: [message sans texte]`;
+        return content
+          ? `${author}: ${content}`
+          : `${author}: [message sans texte]`;
       });
 
     const formatted = ordered.join("\n");
@@ -1494,7 +1799,9 @@ function enqueueForChannel(channelId: string, task: () => Promise<void>): void {
 export async function startBot(): Promise<void> {
   const token = process.env["DISCORD_BOT_TOKEN"];
   if (!token) {
-    logger.warn("DISCORD_BOT_TOKEN non défini — le bot Discord ne démarrera pas");
+    logger.warn(
+      "DISCORD_BOT_TOKEN non défini — le bot Discord ne démarrera pas",
+    );
     return;
   }
 
@@ -1514,11 +1821,16 @@ export async function startBot(): Promise<void> {
 
   const groqClients = loadGroqClients();
   if (groqClients.length === 0) {
-    logger.warn("Aucune clé GROQ_API_KEY trouvée — le bot Discord ne démarrera pas");
+    logger.warn(
+      "Aucune clé GROQ_API_KEY trouvée — le bot Discord ne démarrera pas",
+    );
     return;
   }
 
-  logger.info({ count: groqClients.length }, `${groqClients.length} clé(s) Groq chargée(s)`);
+  logger.info(
+    { count: groqClients.length },
+    `${groqClients.length} clé(s) Groq chargée(s)`,
+  );
 
   const discordClient = new Client({
     intents: [
@@ -1547,7 +1859,10 @@ export async function startBot(): Promise<void> {
         await textChannel.sendTyping().catch(() => {});
         typingInterval = setInterval(() => {
           textChannel.sendTyping().catch((err: unknown) => {
-            logger.debug({ err, channelId }, "Impossible de rafraîchir l'indicateur d'écriture");
+            logger.debug(
+              { err, channelId },
+              "Impossible de rafraîchir l'indicateur d'écriture",
+            );
           });
         }, 8_000);
       }
@@ -1568,7 +1883,9 @@ export async function startBot(): Promise<void> {
     });
   });
 
-  discordClient.on(Events.Error, (err) => logger.error({ err }, "Erreur client Discord"));
+  discordClient.on(Events.Error, (err) =>
+    logger.error({ err }, "Erreur client Discord"),
+  );
   discordClient.on(Events.ShardDisconnect, (event, shardId) => {
     logger.warn({ shardId, code: event.code }, "Bot Discord déconnecté");
   });
