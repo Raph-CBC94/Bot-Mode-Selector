@@ -2,3 +2,4 @@
 - [Contextual insult mode](contextual-insult-mode.md) — hard roasts should target the message, vary recent wording, and avoid threats or protected traits.
 - [Discord mention understanding](discord-mention-understanding.md) — resolve member mentions to readable names before interpreting contextual questions.
 - [Mention question intent](mention-question-intent.md) — classify preference, opinion, like, comparison, and agreement questions before applying bot personality.
+- [Boastful bot mode](boastful-bot-mode.md) — `BOT_MODE=vantard` uses arrogant contextual replies and must remain selectable on the help page.
