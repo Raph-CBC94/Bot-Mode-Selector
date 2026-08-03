@@ -370,14 +370,14 @@ async function registerDiscordCommands(): Promise<{
   const endpoint = guildId
     ? `https://discord.com/api/v10/applications/${applicationId}/guilds/${guildId}/commands`
     : `https://discord.com/api/v10/applications/${applicationId}/commands`;
-  const response = await fetch(endpoint, {
+  const response = (await globalThis.fetch(endpoint, {
     method: "PUT",
     headers: {
       Authorization: `Bot ${botToken}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(DISCORD_COMMANDS),
-  });
+  })) as unknown as FetchResponse;
 
   if (!response.ok) {
     throw new Error(
