@@ -8,11 +8,14 @@ Bot Discord alimenté par Groq (LLaMA/Gemma) avec quatre modes de personnalité 
 - `pnpm run typecheck` — typecheck complet de tous les packages
 - `pnpm run build` — typecheck + build tous les packages
 
-## Variables d'environnement requises
+## Variables d'environnement requises sur Vercel
 
 | Variable | Description |
 |---|---|
 | `DISCORD_BOT_TOKEN` | Token du bot Discord |
+| `DISCORD_APPLICATION_ID` | Application ID du bot dans le portail développeur Discord |
+| `DISCORD_PUBLIC_KEY` | Public Key du bot dans le portail développeur Discord |
+| `DISCORD_REGISTER_SECRET` | Secret choisi par toi pour protéger l'enregistrement des commandes |
 | `GROQ_API_KEY` | Clé API Groq principale |
 | `GROQ_API_KEY_1` … `GROQ_API_KEY_20` | Clés Groq supplémentaires (rotation automatique) |
 | `ALLOWED_CHANNEL_ID` | ID du seul salon Discord dans lequel le bot est autorisé à répondre |
@@ -41,35 +44,33 @@ Le bot répond d'abord réellement à la question, puis ajoute un ton de flirt s
 - DB : PostgreSQL + Drizzle ORM
 - Build : esbuild (CJS bundle)
 
-## Architecture
+## Architecture Vercel-only
+
+- `artifacts/api-server/src/index.ts` — export de l'application Express détecté par Vercel
+- `artifacts/api-server/src/app.ts` — site, endpoint health, webhook Discord signé et enregistrement des commandes slash
+- `artifacts/api-server/src/start.ts` — ancien runtime Gateway long-running, utilisé uniquement hors Vercel
+- `POST /api/discord/interactions` — endpoint à configurer dans Discord
+- `POST /api/discord/register` — enregistre les commandes slash avec `X-Register-Secret`
+
+Vercel ne maintient pas de connexion Gateway Discord permanente. En mode Vercel-only, le bot répond aux commandes slash `/bot` et `/mode`; il ne lit pas automatiquement les messages normaux.
+
+Configuration :
+
+1. Dans Discord Developer Portal → General Information, copie `Application ID` dans `DISCORD_APPLICATION_ID` et `Public Key` dans `DISCORD_PUBLIC_KEY`.
+2. Dans Discord Developer Portal → Interactions Endpoint URL, mets `https://TON-DOMAINE-VERCEL/api/discord/interactions`.
+3. Ajoute un secret aléatoire de ton choix dans `DISCORD_REGISTER_SECRET`.
+4. Pour enregistrer les commandes, appelle `POST https://TON-DOMAINE-VERCEL/api/discord/register` avec l'en-tête `X-Register-Secret: ton-secret`. Ajoute `DISCORD_GUILD_ID` temporairement pour une installation immédiate dans un serveur; sans lui, les commandes sont globales et leur propagation peut prendre du temps.
+5. Utilise ensuite `/bot message: ta question` dans `ALLOWED_CHANNEL_ID`. Un administrateur peut utiliser `/mode` ou `/mode mode: adulte`; le changement demandé est appliqué à la réponse, mais `BOT_MODE` reste la valeur par défaut après chaque nouvelle invocation.
+
+## Architecture historique
 
 - `artifacts/api-server/src/bot/index.ts` — cœur du bot : quatre modes, prompts, fallbacks, rotation des clés Groq, queue par salon
 - `artifacts/api-server/src/bot/affinities.ts` — système d'affinité par utilisateur (score -100 → +100)
-- `artifacts/api-server/src/index.ts` — point d'entrée : démarre Express + bot Discord
+- `artifacts/api-server/src/bot/index.ts` — ancien client Gateway Discord.js conservé pour les déploiements long-running
 
-## Déploiement sur Render
+## Déploiement Vercel
 
-Pour déployer via GitHub → Render :
-1. Push le repo sur GitHub
-2. Créer un **Web Service** sur Render depuis ce repo
-3. Build command : `pnpm install && pnpm --filter @workspace/api-server run build`
-4. Start command : `pnpm --filter @workspace/api-server run start`
-5. Ajouter les variables d'environnement (`DISCORD_BOT_TOKEN`, `GROQ_API_KEY`, `BOT_MODE`, etc.) dans les settings Render
-6. `PORT` est fourni automatiquement par Render
-
-La racine de l'URL Render affiche une page d'aide expliquant comment changer `BOT_MODE`.
-
-## Commande Discord de changement de mode
-
-Dans le salon défini par `ALLOWED_CHANNEL_ID`, un administrateur peut changer le mode sans repasser par Render :
-
-- `!mode` — affiche le mode actuel et les modes disponibles
-- `!mode insulte`
-- `!mode suceur`
-- `!mode vantard`
-- `!mode adulte`
-
-Le changement est immédiat en mémoire et reste actif jusqu'au prochain redémarrage. Après un redémarrage, la valeur `BOT_MODE` configurée dans Render est utilisée.
+Le projet est déployé depuis GitHub sur Vercel. Les variables doivent être configurées dans les environnements Vercel **Production** et **Preview** selon le besoin, puis un nouveau déploiement doit être déclenché après toute modification.
 
 ## User preferences
 
