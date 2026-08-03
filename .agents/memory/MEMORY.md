@@ -6,3 +6,4 @@
 - [Boastful bot mode](boastful-bot-mode.md) — `BOT_MODE=vantard` uses arrogant contextual replies and must remain selectable on the help page.
 - [Adult suggestive mode](adult-suggestive-mode.md) — `BOT_MODE=adulte` stays flirtatious but non-graphic and never sexualizes mentioned members automatically.
 - [Discord mode command](discord-mode-command.md) — administrators can use `!mode <mode>` in the allowed channel for an immediate, restart-temporary mode switch.
+- [Pino HTTP ESM import](pino-http-esm-import.md) — use the named `pinoHttp` export to avoid Vercel namespace-import and implicit-any errors.
