@@ -20,4 +20,4 @@ COPY --from=build /app/artifacts/api-server/dist ./dist
 
 EXPOSE 8080
 
-CMD ["node", "--enable-source-maps", "dist/index.mjs"]
+CMD ["node", "--enable-source-maps", "dist/start.mjs"]

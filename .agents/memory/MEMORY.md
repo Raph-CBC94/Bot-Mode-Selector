@@ -8,3 +8,4 @@
 - [Discord mode command](discord-mode-command.md) — administrators can use `!mode <mode>` in the allowed channel for an immediate, restart-temporary mode switch.
 - [Pino HTTP ESM import](pino-http-esm-import.md) — use the named `pinoHttp` export to avoid Vercel namespace-import and implicit-any errors.
 - [Vercel emit skipped](vercel-emit-skipped.md) — keep Vercel entrypoint dependencies away from declaration-only workspace projects.
+- [Vercel and long-running entrypoints](vercel-runtime-entrypoints.md) — export Express from the Vercel entrypoint; keep HTTP and Discord startup in a separate runtime entry.
