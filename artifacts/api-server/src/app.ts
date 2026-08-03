@@ -1,10 +1,25 @@
 import express, { type Express } from "express";
 import cors from "cors";
+import pino from "pino";
 import { pinoHttp } from "pino-http";
-import router from "./routes/index";
-import { logger } from "./lib/logger";
 
 const app: Express = express();
+const logger = pino({
+  level: process.env.LOG_LEVEL ?? "info",
+  redact: [
+    "req.headers.authorization",
+    "req.headers.cookie",
+    "res.headers['set-cookie']",
+  ],
+  ...(process.env.NODE_ENV === "production"
+    ? {}
+    : {
+        transport: {
+          target: "pino-pretty",
+          options: { colorize: true },
+        },
+      }),
+});
 
 app.get("/", (_req, res) => {
   res.type("html").send(`<!doctype html>
@@ -123,6 +138,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use("/api", router);
+app.get("/api/healthz", (_req, res) => {
+  res.json({ status: "ok" });
+});
 
 export default app;
