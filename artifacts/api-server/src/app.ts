@@ -3,7 +3,6 @@ import cors from "cors";
 import pino from "pino";
 import { pinoHttp } from "pino-http";
 import { createPublicKey, verify as verifySignature } from "node:crypto";
-import OpenAI from "openai";
 
 type BotMode = "insulte" | "suceur" | "vantard" | "adulte";
 
@@ -36,8 +35,23 @@ type DiscordInteractionResponse =
   | { type: 4; data: { content: string; flags?: number } };
 
 type GroqInteractionClient = {
-  client: OpenAI;
+  key: string;
   rateLimitedUntil: number;
+};
+
+type GroqCompletionResponse = {
+  choices?: Array<{
+    message?: {
+      content?: string | null;
+    };
+  }>;
+};
+
+type FetchResponse = {
+  ok: boolean;
+  status: number;
+  text(): Promise<string>;
+  json(): Promise<unknown>;
 };
 
 function parseInteractionMode(raw: unknown): BotMode | null {
@@ -72,10 +86,7 @@ function getInteractionClients(): GroqInteractionClient[] {
 
   for (const key of keys) {
     clients.push({
-      client: new OpenAI({
-        baseURL: "https://api.groq.com/openai/v1",
-        apiKey: key,
-      }),
+      key,
       rateLimitedUntil: 0,
     });
   }
@@ -146,23 +157,40 @@ async function generateInteractionReply(
   if (!selected) return fallback;
 
   try {
-    const completion = await selected.client.chat.completions.create(
+    const response = (await globalThis.fetch(
+      "https://api.groq.com/openai/v1/chat/completions",
       {
-        model: "llama-3.1-8b-instant",
-        max_completion_tokens: 180,
-        temperature: mode === "insulte" ? 1.1 : 0.85,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: interactionPrompt(mode) },
-          {
-            role: "user",
-            content: `${username} dit : "${message.slice(0, 500)}"`,
-          },
-        ],
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${selected.key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "llama-3.1-8b-instant",
+          max_completion_tokens: 180,
+          temperature: mode === "insulte" ? 1.1 : 0.85,
+          response_format: { type: "json_object" },
+          messages: [
+            { role: "system", content: interactionPrompt(mode) },
+            {
+              role: "user",
+              content: `${username} dit : "${message.slice(0, 500)}"`,
+            },
+          ],
+        }),
+        signal: AbortSignal.timeout(2_200),
       },
-      { signal: AbortSignal.timeout(2_200) },
-    );
-    const raw = completion.choices[0]?.message?.content?.trim() ?? "";
+    )) as unknown as FetchResponse;
+
+    if (!response.ok) {
+      throw new Error(
+        `Groq interaction request failed with status ${response.status}: ${await response.text()}`,
+      );
+    }
+
+    const completion =
+      (await response.json()) as GroqCompletionResponse;
+    const raw = completion.choices?.[0]?.message?.content?.trim() ?? "";
     const parsed = JSON.parse(raw) as { reply?: unknown };
     return typeof parsed.reply === "string" && parsed.reply.trim()
       ? parsed.reply.trim().slice(0, 1_900)
