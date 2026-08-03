@@ -291,8 +291,8 @@ function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]!;
 }
 
-// Insultes fortes pour le roast, sans menaces ni formules qui visent la famille
-// ou une caractéristique personnelle plutôt que le message de l'utilisateur.
+// Banque large d'insultes de roast, sans menaces, attaques familiales ou
+// formules visant une caractéristique protégée plutôt que le message.
 const HARD_ROAST_INSULTS = [
   "Sale enculé",
   "Gros connard",
@@ -310,18 +310,164 @@ const HARD_ROAST_INSULTS = [
   "Parasite de merde",
   "Bâtard de compétition",
   "Putain de vermine",
+  "Génie du mauvais choix",
+  "Champion du hors-sujet",
+  "Clown sous pression",
+  "Bouffon de carnaval",
+  "Erreur de casting",
+  "Prototype raté",
+  "Bug sur pattes",
+  "Panne de logique",
+  "Cerveau en mode avion",
+  "Wi-Fi cérébral coupé",
+  "Confusion ambulante",
+  "Catastrophe ambulante",
+  "Désastre en édition limitée",
+  "Chef-d'œuvre de nullité",
+  "Expert en mauvais timing",
+  "Spécialiste du faux départ",
+  "Médaillé de l'à-peu-près",
+  "Roi du raisonnement bancal",
+  "Empereur de la mauvaise foi",
+  "Professeur de l'idée nulle",
+  "Docteur en absurdités",
+  "Diplômé du grand n'importe quoi",
+  "Major de la classe des boulets",
+  "Champion olympique de la gêne",
+  "Phénomène de maladresse",
+  "Cas d'école de confusion",
+  "Concentré de médiocrité",
+  "Échantillon de bêtise",
+  "Collectionneur de mauvaises idées",
+  "Machine à rater l'évidence",
+  "Usine à raisonnements cassés",
+  "Distributeur de décisions nulles",
+  "Professionnel du message inutile",
+  "Architecte du chaos verbal",
+  "Ingénieur en logique défaillante",
+  "Analyste officiel du vide",
+  "Consultant en idées bancales",
+  "Chercheur en excuses minables",
+  "Artisan du malaise",
+  "Producteur de gêne",
+  "Créateur de problèmes",
+  "Spécialiste des conclusions ratées",
+  "Maître du contresens",
+  "Virtuose de la confusion",
+  "Champion de la phrase à côté",
+  "Roi du raisonnement en carton",
+  "Baron de la réflexion molle",
+  "Duc de l'argument éclaté",
+  "Prince de la mauvaise réponse",
+  "Seigneur du débat perdu",
+  "Garde du corps de l'ignorance",
+  "Héros de la fausse bonne idée",
+  "Légende du flop logique",
+  "Icône du mauvais raisonnement",
+  "Star intersidérale du malaise",
+  "Phare de la bêtise",
+  "Monument à l'incompréhension",
+  "Statue de la mauvaise foi",
+  "Reliquat de réflexion",
+  "Résidu de bon sens",
+  "Débris de raisonnement",
+  "Épave argumentative",
+  "Pneu crevé de la conversation",
+  "Frein à main de l'intelligence",
+  "Erreur système humaine",
+  "Version bêta jamais corrigée",
+  "Mise à jour manquante",
+  "Logiciel sans mode d'emploi",
+  "Algorithme de la déception",
+  "Captcha de la pensée",
+  "Notification inutile",
+  "Onglet mental bloqué",
+  "Clavier sans touche logique",
+  "Brouillon jamais terminé",
+  "Phrase en panne",
+  "Question sans moteur",
+  "Argument sous garantie",
+  "Raisonnement en kit",
+  "Pensée de travers",
+  "Idée en solde",
+  "Opinion périmée",
+  "Réflexion discount",
+  "Mauvaise idée sur pattes",
+  "Problème avec un pseudo",
+  "Dossier jamais finalisé",
+  "Défaite en temps réel",
 ] as const;
 
-/** Tire 2 insultes fortes, différentes et pas déjà répétées récemment. */
-function pickTwo(recentConversation = ""): [string, string] {
-  const recent = recentConversation.toLocaleLowerCase("fr");
-  const available = HARD_ROAST_INSULTS.filter(
-    (insult) => !recent.includes(insult.toLocaleLowerCase("fr")),
+const recentInsultHistory: string[] = [];
+
+const ROAST_COMMON_WORDS = new Set([
+  "sale",
+  "gros",
+  "grosse",
+  "putain",
+  "de",
+  "du",
+  "la",
+  "le",
+  "les",
+  "un",
+  "une",
+  "première",
+  "premiere",
+  "compétition",
+]);
+
+function meaningfulInsultWords(text: string): Set<string> {
+  return new Set(
+    text
+      .toLocaleLowerCase("fr")
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .replace(/[^\p{L}\p{N}\s-]/gu, " ")
+      .split(/\s+/)
+      .filter(
+        (word) =>
+          word.length >= 5 &&
+          !ROAST_COMMON_WORDS.has(word),
+      ),
   );
-  const pool = available.length >= 2 ? available : [...HARD_ROAST_INSULTS];
-  const a = pick([...pool]);
-  let b = pick([...pool]);
-  while (b === a) b = pick([...pool]);
+}
+
+function sharesRecentInsultRoot(insult: string, recent: string[]): boolean {
+  const candidateWords = meaningfulInsultWords(insult);
+  return recent.some((previous) => {
+    const previousWords = meaningfulInsultWords(previous);
+    return [...candidateWords].some((word) => previousWords.has(word));
+  });
+}
+
+/** Tire 2 insultes fortes, différentes et absentes de la rotation récente. */
+function pickTwo(recentConversation = ""): [string, string] {
+  const recent = `${recentConversation}\n${recentInsultHistory.join("\n")}`.toLocaleLowerCase("fr");
+  const recentEntries = recentInsultHistory.concat(
+    recentConversation.split("\n").filter((line) => /^bot\s*:/i.test(line)),
+  );
+  const available = HARD_ROAST_INSULTS.filter(
+    (insult) =>
+      !recent.includes(insult.toLocaleLowerCase("fr")) &&
+      !sharesRecentInsultRoot(insult, recentEntries),
+  );
+  const pool =
+    available.length >= 2
+      ? available
+      : HARD_ROAST_INSULTS.filter(
+          (insult) =>
+            !sharesRecentInsultRoot(insult, recentInsultHistory) ||
+            recentInsultHistory.length >= HARD_ROAST_INSULTS.length - 2,
+        );
+  const safePool = pool.length >= 2 ? pool : [...HARD_ROAST_INSULTS];
+  const a = pick([...safePool]);
+  let b = pick([...safePool]);
+  while (b === a) b = pick([...safePool]);
+  recentInsultHistory.push(a, b);
+  if (recentInsultHistory.length > 24) {
+    recentInsultHistory.splice(0, recentInsultHistory.length - 24);
+  }
   return [a, b];
 }
 
@@ -1097,7 +1243,9 @@ JSON : {"reply":"..."}`,
 - Compréhension et pertinence avant la violence gratuite : le roast doit répondre à ce qui vient d'être dit.
 - Pseudo présent, mais ne te contente jamais d'une vanne générique sur le pseudo.
 - Deux insultes fortes minimum, intégrées naturellement dans une phrase qui a du sens.
-- Pas de liste d'insultes, pas de copier-coller de l'historique, pas de même structure deux fois de suite.
+ - Les insultes proposées sont des suggestions : tu peux en choisir d'autres et en inventer une formulation originale.
+ - Ne réutilise pas les insultes, racines, duos, verbes ou structures visibles dans l'historique récent. Si une insulte apparaît déjà dans l'historique, remplace-la par une autre.
+ - Pas de liste d'insultes, pas de copier-coller de l'historique, pas de même structure deux fois de suite.
 - Si le message est ambigu ou vide, fais une vanne courte sur cette ambiguïté plutôt que d'inventer un contexte.
 ${mentionQuestion ? `- La cible de la question est ${mentionLabels(mentionQuestion).join(" et ")} : donne une opinion ou un choix explicite sur cette cible avant les insultes.\n` : ""}${agreementTarget ? `- Cette question porte sur ${agreementTarget} : réponds explicitement oui ou non avant la vanne.` : ""}
 - Réponse en français, généralement 10 à 24 mots (7 à 14 pour le style ultra-court), avec une chute lisible.
