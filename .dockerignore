@@ -1,0 +1,13 @@
+node_modules
+**/node_modules
+artifacts/**/dist
+artifacts/**/.tsbuildinfo
+.git
+.gitignore
+.cache
+.local
+.agents
+attached_assets
+*.log
+.env
+.env.*
