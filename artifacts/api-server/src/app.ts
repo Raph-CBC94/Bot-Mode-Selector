@@ -7,6 +7,8 @@ import { createPublicKey, verify as verifySignature } from "node:crypto";
 type BotMode = "insulte" | "suceur" | "vantard" | "adulte";
 
 const BOT_MODES = ["insulte", "suceur", "vantard", "adulte"] as const;
+let activeBotMode: BotMode =
+  parseInteractionMode(process.env["BOT_MODE"]) ?? "insulte";
 const DISCORD_PING = 1;
 const DISCORD_APPLICATION_COMMAND = 2;
 const DISCORD_EPHEMERAL = 1 << 6;
@@ -271,8 +273,6 @@ async function handleDiscordInteraction(
   }
 
   const command = interaction.data?.name?.toLowerCase();
-  const configuredMode =
-    parseInteractionMode(process.env["BOT_MODE"]) ?? "insulte";
 
   if (command === "mode") {
     const permissions = BigInt(interaction.member?.permissions ?? "0");
@@ -286,12 +286,14 @@ async function handleDiscordInteraction(
       getInteractionOption(interaction, "mode"),
     );
     if (requestedMode) {
+      const previousMode = activeBotMode;
+      activeBotMode = requestedMode;
       return interactionReply(
-        `Le mode demandé est **${requestedMode}**. Sur Vercel, rends-le permanent en définissant \`BOT_MODE=${requestedMode}\`, puis redéploie.`,
+        `Mode changé : **${previousMode}** → **${activeBotMode}**. Il sera utilisé par les prochaines commandes tant que cette instance Vercel reste active.`,
       );
     }
     return interactionReply(
-      `Mode configuré : **${configuredMode}**. Modes disponibles : ${BOT_MODES.map((mode) => `\`${mode}\``).join(", ")}.`,
+      `Mode actuel : **${activeBotMode}**. Modes disponibles : ${BOT_MODES.map((mode) => `\`${mode}\``).join(", ")}.`,
       true,
     );
   }
@@ -313,7 +315,7 @@ async function handleDiscordInteraction(
   const reply = await generateInteractionReply(
     getInteractionUsername(interaction),
     message.trim(),
-    requestedMode ?? configuredMode,
+    requestedMode ?? activeBotMode,
   );
   return interactionReply(reply);
 }
