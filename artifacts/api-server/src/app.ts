@@ -372,40 +372,6 @@ async function ensurePanelMessage(channelId: string): Promise<string> {
   return newPanelMessageId;
 }
 
-async function sendInteractionFollowup(
-  interaction: DiscordInteraction,
-  content: string,
-): Promise<void> {
-  const applicationId = process.env["DISCORD_APPLICATION_ID"];
-  const botToken = process.env["DISCORD_BOT_TOKEN"];
-  if (!applicationId || !botToken || !interaction.token) {
-    throw new Error(
-      "DISCORD_APPLICATION_ID, DISCORD_BOT_TOKEN et le token d'interaction sont requis",
-    );
-  }
-
-  const response = (await globalThis.fetch(
-    `https://discord.com/api/v10/webhooks/${encodeURIComponent(applicationId)}/${encodeURIComponent(interaction.token)}`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bot ${botToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        content: content.slice(0, 2_000),
-        allowed_mentions: { parse: [] },
-      }),
-      signal: AbortSignal.timeout(1_200),
-    },
-  )) as unknown as FetchResponse;
-  if (!response.ok) {
-    throw new Error(
-      `Discord follow-up failed (${response.status}): ${await response.text()}`,
-    );
-  }
-}
-
 async function sendChannelQuestion(
   channelId: string,
   username: string,
@@ -436,6 +402,88 @@ async function sendChannelQuestion(
     throw new Error(
       `Discord question message failed (${response.status}): ${await response.text()}`,
     );
+  }
+}
+
+async function sendChannelReply(
+  channelId: string,
+  content: string,
+): Promise<void> {
+  const headers = getDiscordBotHeaders();
+  if (!headers) {
+    throw new Error("DISCORD_BOT_TOKEN est requis pour publier la réponse");
+  }
+
+  const response = (await globalThis.fetch(
+    `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/messages`,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        content: content.slice(0, 2_000),
+        allowed_mentions: { parse: [] },
+      }),
+      signal: AbortSignal.timeout(1_200),
+    },
+  )) as unknown as FetchResponse;
+  if (!response.ok) {
+    throw new Error(
+      `Discord reply message failed (${response.status}): ${await response.text()}`,
+    );
+  }
+}
+
+async function processChannelQuestion(
+  interaction: DiscordInteraction,
+  username: string,
+  userId: string | null,
+  message: string,
+  requestedMode: BotMode | null,
+): Promise<void> {
+  const channelId = interaction.channel_id!;
+
+  try {
+    const resolvedMessage = await resolveInteractionMentions(
+      message,
+      interaction.guild_id,
+    );
+    const recentConversation = await getRecentInteractionConversation(
+      channelId,
+      username,
+      resolvedMessage,
+    );
+
+    await sendChannelQuestion(channelId, username, userId, resolvedMessage);
+    const reply = await generateInteractionReply(
+      username,
+      resolvedMessage,
+      requestedMode ?? activeBotMode,
+      recentConversation,
+    );
+    await sendChannelReply(channelId, reply);
+  } catch (error) {
+    logger.error({ error }, "Échec du traitement de la question Discord");
+    try {
+      await sendChannelReply(
+        channelId,
+        fallbackForMode(
+          requestedMode ?? activeBotMode,
+          username,
+          message,
+        ),
+      );
+    } catch (fallbackError) {
+      logger.error({ error: fallbackError }, "Échec du fallback Discord");
+    }
+  } finally {
+    try {
+      await ensurePanelMessage(channelId);
+    } catch (panelError) {
+      logger.warn(
+        { error: panelError, channelId },
+        "Impossible de remettre le panel en bas du salon",
+      );
+    }
   }
 }
 
@@ -682,39 +730,16 @@ async function handleDiscordInteraction(
 
     const username = getInteractionUsername(interaction);
     const userId = getInteractionUserId(interaction);
-    const resolvedMessage = await resolveInteractionMentions(
-      message,
-      interaction.guild_id,
-    );
-    const recentConversation = await getRecentInteractionConversation(
-      interaction.channel_id!,
-      username,
-      resolvedMessage,
-    );
     runInBackground(
-      (async () => {
-        await sendChannelQuestion(
-          interaction.channel_id!,
-          username,
-          userId,
-          resolvedMessage,
-        );
-
-        const reply = await generateInteractionReply(
-          username,
-          resolvedMessage,
-          requestedMode ?? activeBotMode,
-          recentConversation,
-        );
-
-        try {
-          await sendInteractionFollowup(interaction, reply);
-        } finally {
-          await ensurePanelMessage(interaction.channel_id!);
-        }
-      })(),
+      processChannelQuestion(
+        interaction,
+        username,
+        userId,
+        message,
+        requestedMode,
+      ),
     );
-    return { type: 5 };
+    return interactionReply("Question reçue, réponse en cours...", true);
   }
 
   const command = interaction.data?.name?.toLowerCase();
@@ -788,22 +813,16 @@ async function handleDiscordInteraction(
     getInteractionOption(interaction, "mode"),
   );
   const username = getInteractionUsername(interaction);
-  const resolvedMessage = await resolveInteractionMentions(
-    message.trim(),
-    interaction.guild_id,
+  runInBackground(
+    processChannelQuestion(
+      interaction,
+      username,
+      getInteractionUserId(interaction),
+      message.trim(),
+      requestedMode,
+    ),
   );
-  const recentConversation = await getRecentInteractionConversation(
-    interaction.channel_id!,
-    username,
-    resolvedMessage,
-  );
-  const reply = await generateInteractionReply(
-    username,
-    resolvedMessage,
-    requestedMode ?? activeBotMode,
-    recentConversation,
-  );
-  return interactionReply(reply);
+  return interactionReply("Question reçue, réponse en cours...", true);
 }
 
 const DISCORD_COMMANDS = [
