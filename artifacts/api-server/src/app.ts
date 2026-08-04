@@ -2,7 +2,6 @@ import express, { type Express } from "express";
 import cors from "cors";
 import pino from "pino";
 import { pinoHttp } from "pino-http";
-import { waitUntil } from "@vercel/functions";
 import { createPublicKey, verify as verifySignature } from "node:crypto";
 import {
   fallbackForMode,
@@ -254,152 +253,38 @@ async function generateInteractionReply(
   mode: BotMode,
   recentConversation: string,
 ): Promise<string> {
+  const fallback = fallbackForMode(
+    mode,
+    username,
+    message,
+    recentConversation,
+  );
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+
   try {
-    return await generateReply(
-      vercelGroqClients,
-      username,
-      message,
-      mode,
-      recentConversation,
-    );
+    return await Promise.race([
+      generateReply(
+        vercelGroqClients,
+        username,
+        message,
+        mode,
+        recentConversation,
+      ),
+      new Promise<string>((resolve) => {
+        timeout = setTimeout(() => {
+          logger.warn(
+            { mode },
+            "Réponse Render trop lente pour Discord — fallback direct utilisé",
+          );
+          resolve(fallback);
+        }, 2_200);
+      }),
+    ]);
   } catch (error) {
     logger.warn({ error, mode }, "Réponse Groq indisponible pour interaction Discord");
-    return fallbackForMode(mode, username, message, recentConversation);
-  }
-}
-
-async function sendInteractionFollowup(
-  interaction: DiscordInteraction,
-  content: string,
-): Promise<void> {
-  const applicationId = process.env["DISCORD_APPLICATION_ID"];
-  const botToken = process.env["DISCORD_BOT_TOKEN"];
-  if (!applicationId || !botToken || !interaction.token) {
-    logger.error("Impossible d'envoyer le follow-up Discord : configuration absente");
-    return;
-  }
-
-  const response = (await globalThis.fetch(
-    `https://discord.com/api/v10/webhooks/${encodeURIComponent(applicationId)}/${encodeURIComponent(interaction.token)}`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bot ${botToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ content: content.slice(0, 2_000) }),
-      signal: AbortSignal.timeout(8_000),
-    },
-  )) as unknown as FetchResponse;
-
-  if (!response.ok) {
-    throw new Error(
-      `Discord follow-up failed (${response.status}): ${await response.text()}`,
-    );
-  }
-}
-
-async function completeBotInteraction(
-  interaction: DiscordInteraction,
-  username: string,
-  message: string,
-  requestedMode: BotMode | null,
-): Promise<void> {
-  let mode: BotMode = requestedMode ?? activeBotMode;
-  try {
-    const storedMode =
-      requestedMode === null && interaction.channel_id
-        ? await readStoredBotMode(interaction.channel_id)
-        : null;
-    mode = requestedMode ?? storedMode ?? activeBotMode;
-    if (storedMode) activeBotMode = storedMode;
-    const resolvedMessage = await resolveInteractionMentions(
-      message,
-      interaction.guild_id,
-    );
-    const recentConversation = await getRecentInteractionConversation(
-      interaction.channel_id!,
-      username,
-      resolvedMessage,
-    );
-    const reply = await generateInteractionReply(
-      username,
-      resolvedMessage,
-      mode,
-      recentConversation,
-    );
-    await sendInteractionFollowup(interaction, reply);
-  } catch (error) {
-    logger.error({ error, mode }, "Échec de la réponse différée Discord");
-    try {
-      await sendInteractionFollowup(
-        interaction,
-        fallbackForMode(mode, username, message),
-      );
-    } catch (fallbackError) {
-      logger.error(
-        { error: fallbackError, mode },
-        "Échec du fallback différé Discord",
-      );
-    }
-  }
-}
-
-async function completeModeInteraction(
-  interaction: DiscordInteraction,
-  requestedMode: BotMode | null,
-): Promise<void> {
-  try {
-    const storedMode = interaction.channel_id
-      ? await readStoredBotMode(interaction.channel_id)
-      : null;
-    if (storedMode) activeBotMode = storedMode;
-
-    if (requestedMode) {
-      const previousMode = activeBotMode;
-      activeBotMode = requestedMode;
-      const persisted = await persistBotMode(
-        interaction.channel_id!,
-        requestedMode,
-      );
-      await sendInteractionFollowup(
-        interaction,
-        persisted
-          ? `Mode changé : **${previousMode}** → **${activeBotMode}**. Le choix est enregistré pour ce salon et sera utilisé par les prochaines commandes.`
-          : `Mode changé : **${previousMode}** → **${activeBotMode}** pour cette instance. Impossible de l'enregistrer dans le sujet du salon : vérifie que le bot a la permission **Gérer le salon**. Pour forcer le mode d'une réponse, utilise l'option \`mode\` de \`/bot\`.`,
-      );
-      return;
-    }
-
-    await sendInteractionFollowup(
-      interaction,
-      `Mode actuel : **${activeBotMode}**. Modes disponibles : ${BOT_MODES.map((mode) => `\`${mode}\``).join(", ")}.`,
-    );
-  } catch (error) {
-    logger.error({ error }, "Échec de la réponse différée de la commande mode");
-    try {
-      await sendInteractionFollowup(
-        interaction,
-        "Impossible de lire ou d'enregistrer le mode pour le moment.",
-      );
-    } catch (fallbackError) {
-      logger.error(
-        { error: fallbackError },
-        "Échec du fallback différé de la commande mode",
-      );
-    }
-  }
-}
-
-function runInBackground(task: Promise<void>): void {
-  const trackedTask = task.catch((error) => {
-    logger.error({ error }, "Tâche Discord différée échouée");
-  });
-
-  try {
-    waitUntil(trackedTask);
-  } catch {
-    // Replit's long-running workflow has no Vercel request context.
+    return fallback;
+  } finally {
+    if (timeout) clearTimeout(timeout);
   }
 }
 
@@ -472,6 +357,11 @@ async function handleDiscordInteraction(
     );
   }
 
+  const storedMode = interaction.channel_id
+    ? await readStoredBotMode(interaction.channel_id)
+    : null;
+  if (storedMode) activeBotMode = storedMode;
+
   const command = interaction.data?.name?.toLowerCase();
 
   if (command === "mode") {
@@ -485,8 +375,23 @@ async function handleDiscordInteraction(
     const requestedMode = parseInteractionMode(
       getInteractionOption(interaction, "mode"),
     );
-    runInBackground(completeModeInteraction(interaction, requestedMode));
-    return { type: 5, data: { flags: DISCORD_EPHEMERAL } };
+    if (requestedMode) {
+      const previousMode = activeBotMode;
+      activeBotMode = requestedMode;
+      const persisted = await persistBotMode(
+        interaction.channel_id!,
+        requestedMode,
+      );
+      return interactionReply(
+        persisted
+          ? `Mode changé : **${previousMode}** → **${activeBotMode}**. Le choix est enregistré pour ce salon et sera utilisé par les prochaines commandes.`
+          : `Mode changé : **${previousMode}** → **${activeBotMode}** pour cette instance. Impossible de l'enregistrer dans le sujet du salon : vérifie que le bot a la permission **Gérer le salon**. Pour forcer le mode d'une réponse, utilise l'option \`mode\` de \`/bot\`.`,
+      );
+    }
+    return interactionReply(
+      `Mode actuel : **${activeBotMode}**. Modes disponibles : ${BOT_MODES.map((mode) => `\`${mode}\``).join(", ")}.`,
+      true,
+    );
   }
 
   if (command !== "bot") {
@@ -504,15 +409,22 @@ async function handleDiscordInteraction(
     getInteractionOption(interaction, "mode"),
   );
   const username = getInteractionUsername(interaction);
-  runInBackground(
-    completeBotInteraction(
-      interaction,
-      username,
-      message.trim(),
-      requestedMode,
-    ),
+  const resolvedMessage = await resolveInteractionMentions(
+    message.trim(),
+    interaction.guild_id,
   );
-  return { type: 5 };
+  const recentConversation = await getRecentInteractionConversation(
+    interaction.channel_id!,
+    username,
+    resolvedMessage,
+  );
+  const reply = await generateInteractionReply(
+    username,
+    resolvedMessage,
+    requestedMode ?? activeBotMode,
+    recentConversation,
+  );
+  return interactionReply(reply);
 }
 
 const DISCORD_COMMANDS = [
@@ -725,6 +637,10 @@ app.use(
   }),
 );
 app.use(cors());
+
+app.get("/favicon.ico", (_req, res) => {
+  res.status(204).end();
+});
 
 app.post(
   "/api/discord/interactions",
