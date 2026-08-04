@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 import cors from "cors";
 import pino from "pino";
 import { pinoHttp } from "pino-http";
+import { waitUntil } from "@vercel/functions";
 import { createPublicKey, verify as verifySignature } from "node:crypto";
 import {
   fallbackForMode,
@@ -208,16 +209,36 @@ async function persistBotMode(
 
 function panelMessagePayload(): {
   content: string;
+  embeds: unknown[];
   components: unknown[];
   allowed_mentions: { parse: string[] };
 } {
   return {
-    content: [
-      PANEL_MESSAGE_MARKER,
-      "**Bot Mode Selector**",
-      "Clique sur le bouton ci-dessous pour poser une question au bot.",
-      "Le style est facultatif : s'il est vide, le mode défini par `/mode` sera utilisé.",
-    ].join("\n"),
+    content: "",
+    embeds: [
+      {
+        title: "Bot Mode Selector",
+        description:
+          "Pose une question au bot et choisis le ton de sa réponse. Le style est facultatif : s'il est vide, le mode défini par `/mode` sera utilisé.",
+        color: 0x7c3aed,
+        fields: [
+          {
+            name: "Comment ça marche ?",
+            value:
+              "1. Clique sur **Poser une question**\n2. Écris ton message\n3. Choisis un style ou laisse le champ vide",
+            inline: false,
+          },
+          {
+            name: "Styles disponibles",
+            value: "💢 `insulte`  ·  💖 `suceur`  ·  👑 `vantard`  ·  🔥 `adulte`",
+            inline: false,
+          },
+        ],
+        footer: {
+          text: "Le panel reste automatiquement en bas du salon",
+        },
+      },
+    ],
     components: [
       {
         type: DISCORD_COMPONENT_ACTION_ROW,
@@ -226,6 +247,7 @@ function panelMessagePayload(): {
             type: DISCORD_COMPONENT_BUTTON,
             style: DISCORD_BUTTON_PRIMARY,
             label: "Poser une question",
+            emoji: { name: "💬" },
             custom_id: PANEL_BUTTON_CUSTOM_ID,
           },
         ],
@@ -295,22 +317,22 @@ async function ensurePanelMessage(channelId: string): Promise<string> {
     const pinnedMessages = (await pinsResponse.json()) as Array<{
       id?: string;
       content?: string;
+      embeds?: Array<{ title?: string }>;
     }>;
     panelMessageId =
       pinnedMessages.find((message) =>
-        message.content?.includes(PANEL_MESSAGE_MARKER),
+        message.content?.includes(PANEL_MESSAGE_MARKER) ||
+        message.embeds?.some((embed) => embed.title === "Bot Mode Selector"),
       )?.id ?? null;
   }
 
   const messageResponse = (await globalThis.fetch(
-    panelMessageId
-      ? `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/messages/${encodeURIComponent(panelMessageId)}`
-      : `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/messages`,
+    `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/messages`,
     {
-      method: panelMessageId ? "PATCH" : "POST",
+      method: "POST",
       headers,
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(1_500),
+      signal: AbortSignal.timeout(1_200),
     },
   )) as unknown as FetchResponse;
   if (!messageResponse.ok) {
@@ -320,13 +342,29 @@ async function ensurePanelMessage(channelId: string): Promise<string> {
   }
 
   const message = (await messageResponse.json()) as { id?: string };
-  panelMessageId = message.id ?? panelMessageId;
-  if (!panelMessageId) {
+  const newPanelMessageId = message.id;
+  if (!newPanelMessageId) {
     throw new Error("Discord n'a pas renvoyé l'identifiant du panel");
   }
 
+  if (panelMessageId) {
+    const deleteResponse = (await globalThis.fetch(
+      `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/messages/${encodeURIComponent(panelMessageId)}`,
+      {
+        method: "DELETE",
+        headers,
+        signal: AbortSignal.timeout(1_000),
+      },
+    )) as unknown as FetchResponse;
+    if (!deleteResponse.ok && deleteResponse.status !== 404) {
+      throw new Error(
+        `Discord panel delete failed (${deleteResponse.status}): ${await deleteResponse.text()}`,
+      );
+    }
+  }
+
   const pinResponse = (await globalThis.fetch(
-    `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/pins/${encodeURIComponent(panelMessageId)}`,
+    `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/pins/${encodeURIComponent(newPanelMessageId)}`,
     {
       method: "PUT",
       headers,
@@ -339,7 +377,53 @@ async function ensurePanelMessage(channelId: string): Promise<string> {
     );
   }
 
-  return panelMessageId;
+  return newPanelMessageId;
+}
+
+async function sendInteractionFollowup(
+  interaction: DiscordInteraction,
+  content: string,
+): Promise<void> {
+  const applicationId = process.env["DISCORD_APPLICATION_ID"];
+  const botToken = process.env["DISCORD_BOT_TOKEN"];
+  if (!applicationId || !botToken || !interaction.token) {
+    throw new Error(
+      "DISCORD_APPLICATION_ID, DISCORD_BOT_TOKEN et le token d'interaction sont requis",
+    );
+  }
+
+  const response = (await globalThis.fetch(
+    `https://discord.com/api/v10/webhooks/${encodeURIComponent(applicationId)}/${encodeURIComponent(interaction.token)}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bot ${botToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        content: content.slice(0, 2_000),
+        allowed_mentions: { parse: [] },
+      }),
+      signal: AbortSignal.timeout(1_200),
+    },
+  )) as unknown as FetchResponse;
+  if (!response.ok) {
+    throw new Error(
+      `Discord follow-up failed (${response.status}): ${await response.text()}`,
+    );
+  }
+}
+
+function runInBackground(task: Promise<void>): void {
+  const trackedTask = task.catch((error) => {
+    logger.error({ error }, "Tâche panel Discord différée échouée");
+  });
+
+  try {
+    waitUntil(trackedTask);
+  } catch {
+    // Le workflow Replit n'a pas de contexte Vercel ; la tâche est déjà suivie.
+  }
 }
 
 type DiscordChannelMessage = {
@@ -581,13 +665,23 @@ async function handleDiscordInteraction(
       username,
       resolvedMessage,
     );
-    const reply = await generateInteractionReply(
-      username,
-      resolvedMessage,
-      requestedMode ?? activeBotMode,
-      recentConversation,
+    runInBackground(
+      (async () => {
+        const reply = await generateInteractionReply(
+          username,
+          resolvedMessage,
+          requestedMode ?? activeBotMode,
+          recentConversation,
+        );
+
+        try {
+          await sendInteractionFollowup(interaction, reply);
+        } finally {
+          await ensurePanelMessage(interaction.channel_id!);
+        }
+      })(),
     );
-    return interactionReply(reply);
+    return { type: 5 };
   }
 
   const command = interaction.data?.name?.toLowerCase();

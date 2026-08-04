@@ -7,4 +7,4 @@ The typing indicator is not evidence that a reply will arrive. AI generation and
 
 **Why:** A bot can visibly type while an upstream request or message reply silently fails, leaving users with no response.
 
-**How to apply:** Keep bounded AI waits and resilient send logic whenever changing the Discord message pipeline. In this Vercel-only webhook, keep the direct single-response flow with a short AI timeout and the mode-specific local fallback; do not introduce deferred follow-ups unless the deployment runtime is configured for them.
+**How to apply:** Keep bounded AI waits and resilient send logic whenever changing the Discord message pipeline. The normal slash-command flow stays direct; the panel may use a bounded Vercel background task only when it must publish the answer and recreate the panel afterward.
