@@ -7,7 +7,7 @@ import {
   TextChannel,
 } from "discord.js";
 import { OpenAI } from "openai";
-import { logger } from "../lib/logger";
+import { logger } from "../lib/logger.js";
 
 // ──────────────────────────────────────────────
 // MODE DU BOT

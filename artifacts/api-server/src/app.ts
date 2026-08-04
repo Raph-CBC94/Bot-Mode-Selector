@@ -9,7 +9,7 @@ import {
   generateReply,
   loadGroqClients,
   type GroqClient,
-} from "./bot/index";
+} from "./bot/index.js";
 
 type BotMode = "insulte" | "suceur" | "vantard" | "adulte";
 
