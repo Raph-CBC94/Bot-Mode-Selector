@@ -217,7 +217,7 @@ function panelMessagePayload(): {
     content: "",
     embeds: [
       {
-        title: "Bot Mode Selector",
+        title: "The TMR Bot",
         description:
           "Pose une question au bot et choisis le ton de sa réponse. Le style est facultatif : s'il est vide, le mode défini par `/mode` sera utilisé.",
         color: 0x7c3aed,
@@ -319,7 +319,11 @@ async function ensurePanelMessage(channelId: string): Promise<string> {
     panelMessageId =
       recentMessages.find((message) =>
         message.content?.includes(PANEL_MESSAGE_MARKER) ||
-        message.embeds?.some((embed) => embed.title === "Bot Mode Selector"),
+        message.embeds?.some(
+          (embed) =>
+            embed.title === "Bot Mode Selector" ||
+            embed.title === "The TMR Bot",
+        ),
       )?.id ?? null;
   }
 
