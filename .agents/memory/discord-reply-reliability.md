@@ -7,4 +7,4 @@ The typing indicator is not evidence that a reply will arrive. AI generation and
 
 **Why:** A bot can visibly type while an upstream request or message reply silently fails, leaving users with no response.
 
-**How to apply:** Keep bounded AI waits and resilient send logic whenever changing the Discord message pipeline.
+**How to apply:** Keep bounded AI waits and resilient send logic whenever changing the Discord message pipeline. For Vercel interactions, acknowledge every command before any Discord, Groq, or persistence request, and register the remaining work with `waitUntil`.

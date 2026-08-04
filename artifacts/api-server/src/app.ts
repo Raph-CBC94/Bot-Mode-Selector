@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 import cors from "cors";
 import pino from "pino";
 import { pinoHttp } from "pino-http";
+import { waitUntil } from "@vercel/functions";
 import { createPublicKey, verify as verifySignature } from "node:crypto";
 import {
   fallbackForMode,
@@ -302,9 +303,16 @@ async function completeBotInteraction(
   interaction: DiscordInteraction,
   username: string,
   message: string,
-  mode: BotMode,
+  requestedMode: BotMode | null,
 ): Promise<void> {
+  let mode: BotMode = requestedMode ?? activeBotMode;
   try {
+    const storedMode =
+      requestedMode === null && interaction.channel_id
+        ? await readStoredBotMode(interaction.channel_id)
+        : null;
+    mode = requestedMode ?? storedMode ?? activeBotMode;
+    if (storedMode) activeBotMode = storedMode;
     const resolvedMessage = await resolveInteractionMentions(
       message,
       interaction.guild_id,
@@ -334,6 +342,64 @@ async function completeBotInteraction(
         "Échec du fallback différé Discord",
       );
     }
+  }
+}
+
+async function completeModeInteraction(
+  interaction: DiscordInteraction,
+  requestedMode: BotMode | null,
+): Promise<void> {
+  try {
+    const storedMode = interaction.channel_id
+      ? await readStoredBotMode(interaction.channel_id)
+      : null;
+    if (storedMode) activeBotMode = storedMode;
+
+    if (requestedMode) {
+      const previousMode = activeBotMode;
+      activeBotMode = requestedMode;
+      const persisted = await persistBotMode(
+        interaction.channel_id!,
+        requestedMode,
+      );
+      await sendInteractionFollowup(
+        interaction,
+        persisted
+          ? `Mode changé : **${previousMode}** → **${activeBotMode}**. Le choix est enregistré pour ce salon et sera utilisé par les prochaines commandes.`
+          : `Mode changé : **${previousMode}** → **${activeBotMode}** pour cette instance. Impossible de l'enregistrer dans le sujet du salon : vérifie que le bot a la permission **Gérer le salon**. Pour forcer le mode d'une réponse, utilise l'option \`mode\` de \`/bot\`.`,
+      );
+      return;
+    }
+
+    await sendInteractionFollowup(
+      interaction,
+      `Mode actuel : **${activeBotMode}**. Modes disponibles : ${BOT_MODES.map((mode) => `\`${mode}\``).join(", ")}.`,
+    );
+  } catch (error) {
+    logger.error({ error }, "Échec de la réponse différée de la commande mode");
+    try {
+      await sendInteractionFollowup(
+        interaction,
+        "Impossible de lire ou d'enregistrer le mode pour le moment.",
+      );
+    } catch (fallbackError) {
+      logger.error(
+        { error: fallbackError },
+        "Échec du fallback différé de la commande mode",
+      );
+    }
+  }
+}
+
+function runInBackground(task: Promise<void>): void {
+  const trackedTask = task.catch((error) => {
+    logger.error({ error }, "Tâche Discord différée échouée");
+  });
+
+  try {
+    waitUntil(trackedTask);
+  } catch {
+    // Replit's long-running workflow has no Vercel request context.
   }
 }
 
@@ -406,11 +472,6 @@ async function handleDiscordInteraction(
     );
   }
 
-  const storedMode = interaction.channel_id
-    ? await readStoredBotMode(interaction.channel_id)
-    : null;
-  if (storedMode) activeBotMode = storedMode;
-
   const command = interaction.data?.name?.toLowerCase();
 
   if (command === "mode") {
@@ -424,23 +485,8 @@ async function handleDiscordInteraction(
     const requestedMode = parseInteractionMode(
       getInteractionOption(interaction, "mode"),
     );
-    if (requestedMode) {
-      const previousMode = activeBotMode;
-      activeBotMode = requestedMode;
-      const persisted = await persistBotMode(
-        interaction.channel_id!,
-        requestedMode,
-      );
-      return interactionReply(
-        persisted
-          ? `Mode changé : **${previousMode}** → **${activeBotMode}**. Le choix est enregistré pour ce salon et sera utilisé par les prochaines commandes.`
-          : `Mode changé : **${previousMode}** → **${activeBotMode}** pour cette instance. Impossible de l'enregistrer dans le sujet du salon : vérifie que le bot a la permission **Gérer le salon**. Pour forcer le mode d'une réponse, utilise l'option \`mode\` de \`/bot\`.`,
-      );
-    }
-    return interactionReply(
-      `Mode actuel : **${activeBotMode}**. Modes disponibles : ${BOT_MODES.map((mode) => `\`${mode}\``).join(", ")}.`,
-      true,
-    );
+    runInBackground(completeModeInteraction(interaction, requestedMode));
+    return { type: 5, data: { flags: DISCORD_EPHEMERAL } };
   }
 
   if (command !== "bot") {
@@ -458,11 +504,13 @@ async function handleDiscordInteraction(
     getInteractionOption(interaction, "mode"),
   );
   const username = getInteractionUsername(interaction);
-  void completeBotInteraction(
-    interaction,
-    username,
-    message.trim(),
-    requestedMode ?? activeBotMode,
+  runInBackground(
+    completeBotInteraction(
+      interaction,
+      username,
+      message.trim(),
+      requestedMode,
+    ),
   );
   return { type: 5 };
 }
