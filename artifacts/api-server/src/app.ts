@@ -81,6 +81,54 @@ const INTERACTION_INSULT_MARKERS = [
   "ta gueule",
   "mépris",
 ] as const;
+const INTERACTION_SUCEUR_MARKERS = [
+  "bravo",
+  "excellent",
+  "formidable",
+  "génial",
+  "incroyable",
+  "pertinent",
+  "raison",
+  "super",
+  "adorable",
+  "félicitations",
+  "bien vu",
+  "j'aime",
+  "plaisir",
+  "sympa",
+] as const;
+const INTERACTION_VANTARD_MARKERS = [
+  "au-dessus",
+  "évidemment",
+  "génie",
+  "intelligence",
+  "meilleur",
+  "mon analyse",
+  "mon niveau",
+  "prends des notes",
+  "seul",
+  "supérieur",
+  "talent",
+  "expert",
+  "maîtrise",
+  "brillant",
+] as const;
+const INTERACTION_ADULTE_MARKERS = [
+  "😉",
+  "😏",
+  "🔥",
+  "charme",
+  "craquer",
+  "envie",
+  "frisson",
+  "mystère",
+  "sédu",
+  "tension",
+  "tentation",
+  "te faire rougir",
+  "sous-entendu",
+  "coquin",
+] as const;
 
 function parseInteractionMode(raw: unknown): BotMode | null {
   if (typeof raw !== "string") return null;
@@ -108,6 +156,28 @@ function containsInteractionInsult(text: string): boolean {
   return INTERACTION_INSULT_MARKERS.some((marker) =>
     normalized.includes(marker),
   );
+}
+
+function containsInteractionMarker(
+  text: string,
+  markers: readonly string[],
+): boolean {
+  const normalized = text.toLocaleLowerCase("fr");
+  return markers.some((marker) => normalized.includes(marker));
+}
+
+function matchesInteractionPersonality(
+  mode: BotMode,
+  text: string,
+): boolean {
+  if (mode === "insulte") return containsInteractionInsult(text);
+  if (mode === "suceur") {
+    return containsInteractionMarker(text, INTERACTION_SUCEUR_MARKERS);
+  }
+  if (mode === "vantard") {
+    return containsInteractionMarker(text, INTERACTION_VANTARD_MARKERS);
+  }
+  return containsInteractionMarker(text, INTERACTION_ADULTE_MARKERS);
 }
 
 function parseStoredMode(topic: string | null | undefined): BotMode | null {
@@ -255,11 +325,11 @@ function interactionPrompt(mode: BotMode): string {
     insulte:
       "MODE INSULTE OBLIGATOIRE. Réponds en français avec un roast agressif, direct et drôle. Tu DOIS insulter l'auteur du message ou ridiculiser clairement son idée avec au moins un mot comme « bouffon », « abruti », « clown », « crétin », « guignol » ou « connard ». Une réponse gentille, neutre, compatissante ou flatteuse est INTERDITE. Sans menace, sans viser une caractéristique protégée et sans harcèlement extrême.",
     suceur:
-      "Réponds en français avec énormément de gentillesse, d'accord et de compliments sincères.",
+      "MODE SUCEUR OBLIGATOIRE. Réponds en français avec énormément de gentillesse, d'accord et de compliments sincères. Tu DOIS approuver, encourager ou complimenter clairement l'auteur ; une réponse froide, neutre, agressive ou distante est INTERDITE.",
     vantard:
-      "Réponds en français au contenu puis ajoute une arrogance théâtrale et drôle sur ta supériorité.",
+      "MODE VANTARD OBLIGATOIRE. Réponds en français au contenu puis ajoute une arrogance théâtrale et drôle sur ta supériorité. Tu DOIS rappeler que ton analyse, ton intelligence ou ton niveau est supérieur ; une réponse neutre ou simplement informative est INTERDITE.",
     adulte:
-      "Réponds en français avec un flirt léger et suggestif, non graphique, sans mineurs, violence sexuelle ou contenu non consenti.",
+      "MODE ADULTE OBLIGATOIRE. Réponds en français au contenu puis ajoute un flirt léger et suggestif avec un sous-entendu, un compliment charmeur ou une tension romantique. Tu DOIS inclure cette touche de flirt ; une réponse neutre ou purement amicale est INTERDITE. Reste non graphique, sans mineurs, violence sexuelle ou contenu non consenti.",
   }[mode];
   return `${personality}
 Retourne uniquement un objet JSON valide sous la forme {"reply":"..."}.
@@ -316,10 +386,10 @@ async function generateInteractionReply(
       return fallback;
     }
     const reply = parsed.reply.trim().slice(0, 1_900);
-    if (mode === "insulte" && !containsInteractionInsult(reply)) {
+    if (!matchesInteractionPersonality(mode, reply)) {
       logger.warn(
         { mode, reply },
-        "Réponse Groq trop gentille pour le mode insulte — fallback local utilisé",
+        "Réponse Groq incompatible avec le mode demandé — fallback local utilisé",
       );
       return fallback;
     }
