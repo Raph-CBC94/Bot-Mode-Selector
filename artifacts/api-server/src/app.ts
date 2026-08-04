@@ -58,9 +58,9 @@ type DiscordInteraction = {
   };
   member?: {
     permissions?: string;
-    user?: { username?: string; global_name?: string };
+    user?: { id?: string; username?: string; global_name?: string };
   };
-  user?: { username?: string; global_name?: string };
+  user?: { id?: string; username?: string; global_name?: string };
 };
 
 type DiscordInteractionResponse =
@@ -120,6 +120,11 @@ function getModalInput(
 function getInteractionUsername(interaction: DiscordInteraction): string {
   const user = interaction.member?.user ?? interaction.user;
   return user?.global_name ?? user?.username ?? "toi";
+}
+
+function getInteractionUserId(interaction: DiscordInteraction): string | null {
+  const user = interaction.member?.user ?? interaction.user;
+  return user?.id ?? null;
 }
 
 function parseStoredMode(topic: string | null | undefined): BotMode | null {
@@ -401,6 +406,39 @@ async function sendInteractionFollowup(
   }
 }
 
+async function sendChannelQuestion(
+  channelId: string,
+  username: string,
+  userId: string | null,
+  message: string,
+): Promise<void> {
+  const headers = getDiscordBotHeaders();
+  if (!headers) {
+    throw new Error("DISCORD_BOT_TOKEN est requis pour publier la question");
+  }
+
+  const author = userId ? `<@${userId}>` : `**${username}**`;
+  const response = (await globalThis.fetch(
+    `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/messages`,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        content: `${author}\n> ${message.replace(/\n/g, "\n> ").slice(0, 1_850)}`,
+        allowed_mentions: userId
+          ? { parse: [], users: [userId] }
+          : { parse: [] },
+      }),
+      signal: AbortSignal.timeout(1_200),
+    },
+  )) as unknown as FetchResponse;
+  if (!response.ok) {
+    throw new Error(
+      `Discord question message failed (${response.status}): ${await response.text()}`,
+    );
+  }
+}
+
 function runInBackground(task: Promise<void>): void {
   const trackedTask = task.catch((error) => {
     logger.error({ error }, "Tâche panel Discord différée échouée");
@@ -643,6 +681,7 @@ async function handleDiscordInteraction(
     }
 
     const username = getInteractionUsername(interaction);
+    const userId = getInteractionUserId(interaction);
     const resolvedMessage = await resolveInteractionMentions(
       message,
       interaction.guild_id,
@@ -654,6 +693,13 @@ async function handleDiscordInteraction(
     );
     runInBackground(
       (async () => {
+        await sendChannelQuestion(
+          interaction.channel_id!,
+          username,
+          userId,
+          resolvedMessage,
+        );
+
         const reply = await generateInteractionReply(
           username,
           resolvedMessage,
