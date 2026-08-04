@@ -145,9 +145,12 @@ async function readStoredBotMode(channelId: string): Promise<BotMode | null> {
   }
 }
 
-async function persistBotMode(channelId: string, mode: BotMode): Promise<void> {
+async function persistBotMode(
+  channelId: string,
+  mode: BotMode,
+): Promise<boolean> {
   const headers = getDiscordBotHeaders();
-  if (!headers) return;
+  if (!headers) return false;
 
   try {
     const getResponse = (await globalThis.fetch(
@@ -182,11 +185,13 @@ async function persistBotMode(channelId: string, mode: BotMode): Promise<void> {
     if (!patchResponse.ok) {
       throw new Error(`Discord channel update failed (${patchResponse.status})`);
     }
+    return true;
   } catch (error) {
     logger.warn(
       { error, mode },
       "Impossible de persister le mode dans le sujet Discord",
     );
+    return false;
   }
 }
 
@@ -415,9 +420,14 @@ async function handleDiscordInteraction(
     if (requestedMode) {
       const previousMode = activeBotMode;
       activeBotMode = requestedMode;
-      await persistBotMode(interaction.channel_id!, requestedMode);
+      const persisted = await persistBotMode(
+        interaction.channel_id!,
+        requestedMode,
+      );
       return interactionReply(
-        `Mode changé : **${previousMode}** → **${activeBotMode}**. Le choix est enregistré pour ce salon et sera utilisé par les prochaines commandes.`,
+        persisted
+          ? `Mode changé : **${previousMode}** → **${activeBotMode}**. Le choix est enregistré pour ce salon et sera utilisé par les prochaines commandes.`
+          : `Mode changé : **${previousMode}** → **${activeBotMode}** pour cette instance. Impossible de l'enregistrer dans le sujet du salon : vérifie que le bot a la permission **Gérer le salon**. Pour forcer le mode d'une réponse, utilise l'option \`mode\` de \`/bot\`.`,
       );
     }
     return interactionReply(
