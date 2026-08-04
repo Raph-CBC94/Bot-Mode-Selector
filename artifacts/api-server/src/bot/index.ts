@@ -6,7 +6,7 @@ import {
   PermissionsBitField,
   TextChannel,
 } from "discord.js";
-import OpenAI from "openai";
+import { OpenAI } from "openai";
 import { logger } from "../lib/logger";
 
 // ──────────────────────────────────────────────
