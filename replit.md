@@ -66,11 +66,11 @@ Configuration :
 
 - `artifacts/api-server/src/bot/index.ts` — cœur du bot : quatre modes, prompts, fallbacks, rotation des clés Groq, queue par salon
 - `artifacts/api-server/src/bot/affinities.ts` — système d'affinité par utilisateur (score -100 → +100)
-- `artifacts/api-server/src/bot/index.ts` — ancien client Gateway Discord.js conservé pour les déploiements long-running
+- `artifacts/api-server/src/bot/index.ts` — moteur partagé des prompts, fallbacks, rotation Groq et mémoire courte, utilisé par Gateway et Vercel
 
 ## Déploiement Vercel
 
-Le projet est déployé depuis GitHub sur Vercel. Les variables doivent être configurées dans les environnements Vercel **Production** et **Preview** selon le besoin, puis un nouveau déploiement doit être déclenché après toute modification.
+Le projet est déployé depuis GitHub sur Vercel. Les variables doivent être configurées dans les environnements Vercel **Production** et **Preview** selon le besoin, puis un nouveau déploiement doit être déclenché après toute modification. Le webhook Vercel réutilise le même moteur que l’ancien déploiement Render : prompts complets par mode, historique des 12 derniers messages, rotation des modèles/clés Groq, retries et fallbacks locaux.
 
 ## User preferences
 

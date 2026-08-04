@@ -3,6 +3,12 @@ import cors from "cors";
 import pino from "pino";
 import { pinoHttp } from "pino-http";
 import { createPublicKey, verify as verifySignature } from "node:crypto";
+import {
+  fallbackForMode,
+  generateReply,
+  loadGroqClients,
+  type GroqClient,
+} from "./bot/index";
 
 type BotMode = "insulte" | "suceur" | "vantard" | "adulte";
 
@@ -21,6 +27,9 @@ const DISCORD_PUBLIC_KEY_PREFIX = Buffer.from(
 type DiscordInteraction = {
   type?: number;
   channel_id?: string;
+  guild_id?: string;
+  id?: string;
+  token?: string;
   data?: {
     name?: string;
     options?: Array<{ name?: string; value?: unknown }>;
@@ -34,20 +43,8 @@ type DiscordInteraction = {
 
 type DiscordInteractionResponse =
   | { type: 1 }
+  | { type: 5; data?: { flags?: number } }
   | { type: 4; data: { content: string; flags?: number } };
-
-type GroqInteractionClient = {
-  key: string;
-  rateLimitedUntil: number;
-};
-
-type GroqCompletionResponse = {
-  choices?: Array<{
-    message?: {
-      content?: string | null;
-    };
-  }>;
-};
 
 type FetchResponse = {
   ok: boolean;
@@ -58,77 +55,7 @@ type FetchResponse = {
 
 const BOT_MODE_TOPIC_RE =
   /(?:^|\n)\[bot-mode:(insulte|suceur|vantard|adulte)\](?=\n|$)/i;
-const INTERACTION_INSULT_MARKERS = [
-  "abruti",
-  "abrutie",
-  "blaireau",
-  "bouffon",
-  "clown",
-  "connard",
-  "conne",
-  "crétin",
-  "crétine",
-  "débile",
-  "déchet",
-  "guignol",
-  "idiot",
-  "idiote",
-  "incapable",
-  "navet",
-  "pitre",
-  "sac à merde",
-  "sale con",
-  "ta gueule",
-  "mépris",
-] as const;
-const INTERACTION_SUCEUR_MARKERS = [
-  "bravo",
-  "excellent",
-  "formidable",
-  "génial",
-  "incroyable",
-  "pertinent",
-  "raison",
-  "super",
-  "adorable",
-  "félicitations",
-  "bien vu",
-  "j'aime",
-  "plaisir",
-  "sympa",
-] as const;
-const INTERACTION_VANTARD_MARKERS = [
-  "au-dessus",
-  "évidemment",
-  "génie",
-  "intelligence",
-  "meilleur",
-  "mon analyse",
-  "mon niveau",
-  "prends des notes",
-  "seul",
-  "supérieur",
-  "talent",
-  "expert",
-  "maîtrise",
-  "brillant",
-] as const;
-const INTERACTION_ADULTE_MARKERS = [
-  "😉",
-  "😏",
-  "🔥",
-  "charme",
-  "craquer",
-  "envie",
-  "frisson",
-  "mystère",
-  "sédu",
-  "tension",
-  "tentation",
-  "te faire rougir",
-  "sous-entendu",
-  "coquin",
-] as const;
+const vercelGroqClients: GroqClient[] = loadGroqClients();
 
 function parseInteractionMode(raw: unknown): BotMode | null {
   if (typeof raw !== "string") return null;
@@ -149,35 +76,6 @@ function getInteractionOption(
 function getInteractionUsername(interaction: DiscordInteraction): string {
   const user = interaction.member?.user ?? interaction.user;
   return user?.global_name ?? user?.username ?? "toi";
-}
-
-function containsInteractionInsult(text: string): boolean {
-  const normalized = text.toLocaleLowerCase("fr");
-  return INTERACTION_INSULT_MARKERS.some((marker) =>
-    normalized.includes(marker),
-  );
-}
-
-function containsInteractionMarker(
-  text: string,
-  markers: readonly string[],
-): boolean {
-  const normalized = text.toLocaleLowerCase("fr");
-  return markers.some((marker) => normalized.includes(marker));
-}
-
-function matchesInteractionPersonality(
-  mode: BotMode,
-  text: string,
-): boolean {
-  if (mode === "insulte") return containsInteractionInsult(text);
-  if (mode === "suceur") {
-    return containsInteractionMarker(text, INTERACTION_SUCEUR_MARKERS);
-  }
-  if (mode === "vantard") {
-    return containsInteractionMarker(text, INTERACTION_VANTARD_MARKERS);
-  }
-  return containsInteractionMarker(text, INTERACTION_ADULTE_MARKERS);
 }
 
 function parseStoredMode(topic: string | null | undefined): BotMode | null {
@@ -265,138 +163,177 @@ async function persistBotMode(
   }
 }
 
-function getInteractionClients(): GroqInteractionClient[] {
-  const clients: GroqInteractionClient[] = [];
-  const keys = [
-    process.env["GROQ_API_KEY"],
-    ...Array.from({ length: 20 }, (_, index) =>
-      process.env[`GROQ_API_KEY_${index + 1}`],
-    ),
-  ].filter((key): key is string => Boolean(key));
+type DiscordChannelMessage = {
+  author?: { username?: string; bot?: boolean };
+  content?: string;
+  timestamp?: string;
+};
 
-  for (const key of keys) {
-    clients.push({
-      key,
-      rateLimitedUntil: 0,
-    });
-  }
+async function resolveInteractionMentions(
+  message: string,
+  guildId: string | undefined,
+): Promise<string> {
+  if (!guildId || !message.includes("<@")) return message;
+  const headers = getDiscordBotHeaders();
+  if (!headers) return message.replace(/<@!?\d+>/g, "@membre_mentionné");
 
-  return clients;
-}
-
-function selectInteractionClient(
-  clients: GroqInteractionClient[],
-): GroqInteractionClient | null {
-  const available = clients.filter(
-    (client) => client.rateLimitedUntil <= Date.now(),
+  const ids = [...message.matchAll(/<@!?(\d+)>/g)].map((match) => match[1]!);
+  const names = new Map<string, string>();
+  await Promise.all(
+    [...new Set(ids)].slice(0, 5).map(async (userId) => {
+      try {
+        const response = (await globalThis.fetch(
+          `https://discord.com/api/v10/guilds/${encodeURIComponent(guildId)}/members/${encodeURIComponent(userId)}`,
+          { headers, signal: AbortSignal.timeout(500) },
+        )) as unknown as FetchResponse;
+        if (!response.ok) return;
+        const member = (await response.json()) as {
+          nick?: string | null;
+          user?: { global_name?: string; username?: string };
+        };
+        const name =
+          member.nick ?? member.user?.global_name ?? member.user?.username;
+        if (name) names.set(userId, name.replace(/\s+/g, "_"));
+      } catch {
+        // Keep the generic mention replacement when Discord lookup times out.
+      }
+    }),
   );
-  return (available.length > 0 ? available : clients)[
-    Math.floor(Math.random() * (available.length > 0 ? available : clients).length)
-  ] ?? null;
+
+  return message.replace(
+    /<@!?(\d+)>/g,
+    (_rawMention, userId: string) =>
+      `@${names.get(userId) ?? "membre_mentionné"}`,
+  );
 }
 
-function shortenInteractionText(value: string, maxLength = 80): string {
-  const normalized = value.replace(/\s+/g, " ").trim();
-  return normalized.length > maxLength
-    ? `${normalized.slice(0, maxLength - 1)}…`
-    : normalized;
-}
-
-function interactionFallback(
-  mode: BotMode,
+async function getRecentInteractionConversation(
+  channelId: string,
   username: string,
   message: string,
-): string {
-  const excerpt = shortenInteractionText(message, 55);
-  if (mode === "suceur") {
-    return `${username}, tu as totalement raison. Ton message « ${excerpt} » est franchement pertinent et bien vu.`;
+): Promise<string> {
+  const headers = getDiscordBotHeaders();
+  const entries: string[] = [];
+  if (headers) {
+    try {
+      const response = (await globalThis.fetch(
+        `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/messages?limit=12`,
+        { headers, signal: AbortSignal.timeout(700) },
+      )) as unknown as FetchResponse;
+      if (response.ok) {
+        const messages = (await response.json()) as DiscordChannelMessage[];
+        entries.push(
+          ...messages
+            .slice()
+            .reverse()
+            .map((entry) => {
+              const author = entry.author?.bot
+                ? "BOT"
+                : entry.author?.username ?? "utilisateur";
+              const content = (entry.content ?? "")
+                .replace(/\s+/g, " ")
+                .trim()
+                .slice(0, 350);
+              return `${author}: ${content || "[message sans texte]"}`;
+            }),
+        );
+      }
+    } catch (error) {
+      logger.warn({ error, channelId }, "Historique Discord indisponible");
+    }
   }
-  if (mode === "vantard") {
-    return `${username}, j'ai compris « ${excerpt} » en une fraction de seconde. Réponse : tu avais besoin de mon niveau d'analyse.`;
-  }
-  if (mode === "adulte") {
-    return `${username}, j'ai bien compris « ${excerpt} ». Réponse claire, avec juste ce qu'il faut de mystère pour te donner envie d'en demander plus 😉`;
-  }
-  return `${username}, « ${excerpt} » : même ta question arrive en retard sur mon mépris, pauvre bouffon.`;
-}
 
-function interactionPrompt(mode: BotMode): string {
-  const personality = {
-    insulte:
-      "MODE INSULTE OBLIGATOIRE. Réponds en français avec un roast agressif, direct et drôle. Tu DOIS insulter l'auteur du message ou ridiculiser clairement son idée avec au moins un mot comme « bouffon », « abruti », « clown », « crétin », « guignol » ou « connard ». Une réponse gentille, neutre, compatissante ou flatteuse est INTERDITE. Sans menace, sans viser une caractéristique protégée et sans harcèlement extrême.",
-    suceur:
-      "MODE SUCEUR OBLIGATOIRE. Réponds en français avec énormément de gentillesse, d'accord et de compliments sincères. Tu DOIS approuver, encourager ou complimenter clairement l'auteur ; une réponse froide, neutre, agressive ou distante est INTERDITE.",
-    vantard:
-      "MODE VANTARD OBLIGATOIRE. Réponds en français au contenu puis ajoute une arrogance théâtrale et drôle sur ta supériorité. Tu DOIS rappeler que ton analyse, ton intelligence ou ton niveau est supérieur ; une réponse neutre ou simplement informative est INTERDITE.",
-    adulte:
-      "MODE ADULTE OBLIGATOIRE. Réponds en français au contenu puis ajoute un flirt léger et suggestif avec un sous-entendu, un compliment charmeur ou une tension romantique. Tu DOIS inclure cette touche de flirt ; une réponse neutre ou purement amicale est INTERDITE. Reste non graphique, sans mineurs, violence sexuelle ou contenu non consenti.",
-  }[mode];
-  return `${personality}
-Retourne uniquement un objet JSON valide sous la forme {"reply":"..."}.
-Réponds en 700 caractères maximum. Ne prétends pas connaître des faits absents du message.`;
+  const current = `${username}: ${message.replace(/\s+/g, " ").trim()}`;
+  return [...entries, current].join("\n").slice(-3_500);
 }
 
 async function generateInteractionReply(
   username: string,
   message: string,
   mode: BotMode,
+  recentConversation: string,
 ): Promise<string> {
-  const fallback = interactionFallback(mode, username, message);
-  const clients = getInteractionClients();
-  const selected = selectInteractionClient(clients);
-  if (!selected) return fallback;
-
   try {
-    const response = (await globalThis.fetch(
-      "https://api.groq.com/openai/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${selected.key}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "llama-3.1-8b-instant",
-          max_completion_tokens: 180,
-          temperature: mode === "insulte" ? 1.1 : 0.85,
-          response_format: { type: "json_object" },
-          messages: [
-            { role: "system", content: interactionPrompt(mode) },
-            {
-              role: "user",
-              content: `${username} dit : "${message.slice(0, 500)}"`,
-            },
-          ],
-        }),
-        signal: AbortSignal.timeout(2_200),
-      },
-    )) as unknown as FetchResponse;
-
-    if (!response.ok) {
-      throw new Error(
-        `Groq interaction request failed with status ${response.status}: ${await response.text()}`,
-      );
-    }
-
-    const completion =
-      (await response.json()) as GroqCompletionResponse;
-    const raw = completion.choices?.[0]?.message?.content?.trim() ?? "";
-    const parsed = JSON.parse(raw) as { reply?: unknown };
-    if (typeof parsed.reply !== "string" || !parsed.reply.trim()) {
-      return fallback;
-    }
-    const reply = parsed.reply.trim().slice(0, 1_900);
-    if (!matchesInteractionPersonality(mode, reply)) {
-      logger.warn(
-        { mode, reply },
-        "Réponse Groq incompatible avec le mode demandé — fallback local utilisé",
-      );
-      return fallback;
-    }
-    return reply;
+    return await generateReply(
+      vercelGroqClients,
+      username,
+      message,
+      mode,
+      recentConversation,
+    );
   } catch (error) {
     logger.warn({ error, mode }, "Réponse Groq indisponible pour interaction Discord");
-    return fallback;
+    return fallbackForMode(mode, username, message, recentConversation);
+  }
+}
+
+async function sendInteractionFollowup(
+  interaction: DiscordInteraction,
+  content: string,
+): Promise<void> {
+  const applicationId = process.env["DISCORD_APPLICATION_ID"];
+  const botToken = process.env["DISCORD_BOT_TOKEN"];
+  if (!applicationId || !botToken || !interaction.token) {
+    logger.error("Impossible d'envoyer le follow-up Discord : configuration absente");
+    return;
+  }
+
+  const response = (await globalThis.fetch(
+    `https://discord.com/api/v10/webhooks/${encodeURIComponent(applicationId)}/${encodeURIComponent(interaction.token)}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bot ${botToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ content: content.slice(0, 2_000) }),
+      signal: AbortSignal.timeout(8_000),
+    },
+  )) as unknown as FetchResponse;
+
+  if (!response.ok) {
+    throw new Error(
+      `Discord follow-up failed (${response.status}): ${await response.text()}`,
+    );
+  }
+}
+
+async function completeBotInteraction(
+  interaction: DiscordInteraction,
+  username: string,
+  message: string,
+  mode: BotMode,
+): Promise<void> {
+  try {
+    const resolvedMessage = await resolveInteractionMentions(
+      message,
+      interaction.guild_id,
+    );
+    const recentConversation = await getRecentInteractionConversation(
+      interaction.channel_id!,
+      username,
+      resolvedMessage,
+    );
+    const reply = await generateInteractionReply(
+      username,
+      resolvedMessage,
+      mode,
+      recentConversation,
+    );
+    await sendInteractionFollowup(interaction, reply);
+  } catch (error) {
+    logger.error({ error, mode }, "Échec de la réponse différée Discord");
+    try {
+      await sendInteractionFollowup(
+        interaction,
+        fallbackForMode(mode, username, message),
+      );
+    } catch (fallbackError) {
+      logger.error(
+        { error: fallbackError, mode },
+        "Échec du fallback différé Discord",
+      );
+    }
   }
 }
 
@@ -520,12 +457,14 @@ async function handleDiscordInteraction(
   const requestedMode = parseInteractionMode(
     getInteractionOption(interaction, "mode"),
   );
-  const reply = await generateInteractionReply(
-    getInteractionUsername(interaction),
+  const username = getInteractionUsername(interaction);
+  void completeBotInteraction(
+    interaction,
+    username,
     message.trim(),
     requestedMode ?? activeBotMode,
   );
-  return interactionReply(reply);
+  return { type: 5 };
 }
 
 const DISCORD_COMMANDS = [

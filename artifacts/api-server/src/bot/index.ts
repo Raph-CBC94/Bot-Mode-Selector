@@ -983,13 +983,13 @@ function fallbackAdulte(username: string, messageContent: string): string {
 // ROTATION ALÉATOIRE DES CLÉS API GROQ
 // ──────────────────────────────────────────────
 
-interface GroqClient {
+export interface GroqClient {
   client: OpenAI;
   key: string;
   rateLimitedUntil: number;
 }
 
-function loadGroqClients(): GroqClient[] {
+export function loadGroqClients(): GroqClient[] {
   const clients: GroqClient[] = [];
   const legacy = process.env["GROQ_API_KEY"];
   if (legacy) {
@@ -1779,7 +1779,7 @@ async function callGroqWithRetry(
   return fallbackInsult(username, messageContent, recentConversation);
 }
 
-function fallbackForMode(
+export function fallbackForMode(
   mode: BotMode,
   username: string,
   messageContent: string,
@@ -1792,7 +1792,7 @@ function fallbackForMode(
   return fallbackInsult(username, messageContent, recentConversation);
 }
 
-async function generateReply(
+export async function generateReply(
   clients: GroqClient[],
   username: string,
   messageContent: string,
