@@ -5,6 +5,6 @@ description: Fallback architecture for Vercel when local workspace route imports
 
 When Vercel's runtime cannot resolve local route imports from the monorepo, keep the serverless Express app entry self-contained: define its health endpoint and logging setup directly in the app module, while the persistent bot runtime may continue using a separate startup entry.
 
-**Why:** Vercel repeatedly failed with `ERR_MODULE_NOT_FOUND` for the local `routes/index` import even after removing the directory import.
+**Why:** Vercel repeatedly failed with `ERR_MODULE_NOT_FOUND` for local monorepo imports, including `./bot/index`, because its serverless TypeScript runtime was not using the Replit esbuild bundle and Node ESM requires explicit `.js` extensions.
 
-**How to apply:** Prefer the self-contained Vercel app entry for this project unless the Vercel project root and compiler configuration are intentionally changed together.
+**How to apply:** Prefer the self-contained Vercel app entry for this project unless the Vercel project root and compiler configuration are intentionally changed together. When Vercel transpiles source files directly, use explicit `.js` extensions on every local ESM import in the API source.
