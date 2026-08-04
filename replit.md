@@ -60,7 +60,7 @@ Configuration :
 2. Dans Discord Developer Portal → Interactions Endpoint URL, mets `https://TON-DOMAINE-VERCEL/api/discord/interactions`.
 3. Ajoute un secret aléatoire de ton choix dans `DISCORD_REGISTER_SECRET`.
 4. Pour enregistrer les commandes, appelle `POST https://TON-DOMAINE-VERCEL/api/discord/register` avec l'en-tête `X-Register-Secret: ton-secret`. Ajoute `DISCORD_GUILD_ID` temporairement pour une installation immédiate dans un serveur; sans lui, les commandes sont globales et leur propagation peut prendre du temps.
-5. Utilise ensuite `/bot message: ta question` dans `ALLOWED_CHANNEL_ID`. Un administrateur peut utiliser `/mode` ou `/mode mode: adulte`; le changement est utilisé par les prochaines commandes tant que l'instance Vercel reste chaude. Après un redémarrage ou une nouvelle instance, `BOT_MODE` redevient la valeur de départ.
+5. Utilise ensuite `/bot message: ta question` dans `ALLOWED_CHANNEL_ID`. Un administrateur peut utiliser `/mode` ou `/mode mode: adulte`; le mode choisi est enregistré dans le sujet du salon sous la forme `[bot-mode:adulte]`, puis relu par chaque interaction, même après un redémarrage Vercel. Le bot doit avoir la permission **Gérer le salon** pour mettre à jour ce sujet. Si cette permission manque, utilise l'option `mode` directement dans `/bot`.
 
 ## Architecture historique
 
@@ -81,4 +81,4 @@ _Populate as you build — explicit user instructions worth remembering across s
 - Ne jamais appeler `pnpm dev` à la racine — passer par les workflows Replit
 - Le bot ne démarre pas si `DISCORD_BOT_TOKEN` ou `ALLOWED_CHANNEL_ID` est absent (warning loggé, pas de crash)
 - Si toutes les clés Groq sont rate-limitées, le bot utilise des fallbacks locaux (pas d'arrêt)
-- `BOT_MODE` est utilisé au démarrage du bot ; un administrateur peut ensuite le remplacer temporairement avec `!mode <mode>` jusqu'au prochain redémarrage
+- `BOT_MODE` sert de mode initial ; `/mode mode:<mode>` persiste ensuite le choix dans le sujet du salon autorisé. Le bot doit avoir la permission Discord **Gérer le salon** pour cette persistance.

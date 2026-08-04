@@ -56,6 +56,32 @@ type FetchResponse = {
   json(): Promise<unknown>;
 };
 
+const BOT_MODE_TOPIC_RE =
+  /(?:^|\n)\[bot-mode:(insulte|suceur|vantard|adulte)\](?=\n|$)/i;
+const INTERACTION_INSULT_MARKERS = [
+  "abruti",
+  "abrutie",
+  "blaireau",
+  "bouffon",
+  "clown",
+  "connard",
+  "conne",
+  "crétin",
+  "crétine",
+  "débile",
+  "déchet",
+  "guignol",
+  "idiot",
+  "idiote",
+  "incapable",
+  "navet",
+  "pitre",
+  "sac à merde",
+  "sale con",
+  "ta gueule",
+  "mépris",
+] as const;
+
 function parseInteractionMode(raw: unknown): BotMode | null {
   if (typeof raw !== "string") return null;
   const normalized = raw.trim().toLowerCase();
@@ -75,6 +101,93 @@ function getInteractionOption(
 function getInteractionUsername(interaction: DiscordInteraction): string {
   const user = interaction.member?.user ?? interaction.user;
   return user?.global_name ?? user?.username ?? "toi";
+}
+
+function containsInteractionInsult(text: string): boolean {
+  const normalized = text.toLocaleLowerCase("fr");
+  return INTERACTION_INSULT_MARKERS.some((marker) =>
+    normalized.includes(marker),
+  );
+}
+
+function parseStoredMode(topic: string | null | undefined): BotMode | null {
+  return parseInteractionMode(topic?.match(BOT_MODE_TOPIC_RE)?.[1]);
+}
+
+function getDiscordBotHeaders(): Record<string, string> | null {
+  const token = process.env["DISCORD_BOT_TOKEN"];
+  return token
+    ? {
+        Authorization: `Bot ${token}`,
+        "Content-Type": "application/json",
+      }
+    : null;
+}
+
+async function readStoredBotMode(channelId: string): Promise<BotMode | null> {
+  const headers = getDiscordBotHeaders();
+  if (!headers) return null;
+
+  try {
+    const response = (await globalThis.fetch(
+      `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}`,
+      {
+        headers,
+        signal: AbortSignal.timeout(650),
+      },
+    )) as unknown as FetchResponse;
+    if (!response.ok) return null;
+    const channel = (await response.json()) as { topic?: string | null };
+    return parseStoredMode(channel.topic);
+  } catch (error) {
+    logger.warn({ error }, "Mode Discord persistant indisponible");
+    return null;
+  }
+}
+
+async function persistBotMode(channelId: string, mode: BotMode): Promise<void> {
+  const headers = getDiscordBotHeaders();
+  if (!headers) return;
+
+  try {
+    const getResponse = (await globalThis.fetch(
+      `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}`,
+      {
+        headers,
+        signal: AbortSignal.timeout(650),
+      },
+    )) as unknown as FetchResponse;
+    if (!getResponse.ok) {
+      throw new Error(`Discord channel lookup failed (${getResponse.status})`);
+    }
+
+    const channel = (await getResponse.json()) as { topic?: string | null };
+    const currentTopic = channel.topic ?? "";
+    const withoutMode = currentTopic
+      .replace(BOT_MODE_TOPIC_RE, "")
+      .replace(/\n{3,}/g, "\n")
+      .trim();
+    const topic = withoutMode
+      ? `${withoutMode}\n[bot-mode:${mode}]`
+      : `[bot-mode:${mode}]`;
+    const patchResponse = (await globalThis.fetch(
+      `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}`,
+      {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ topic: topic.slice(0, 1_024) }),
+        signal: AbortSignal.timeout(650),
+      },
+    )) as unknown as FetchResponse;
+    if (!patchResponse.ok) {
+      throw new Error(`Discord channel update failed (${patchResponse.status})`);
+    }
+  } catch (error) {
+    logger.warn(
+      { error, mode },
+      "Impossible de persister le mode dans le sujet Discord",
+    );
+  }
 }
 
 function getInteractionClients(): GroqInteractionClient[] {
@@ -129,13 +242,13 @@ function interactionFallback(
   if (mode === "adulte") {
     return `${username}, j'ai bien compris « ${excerpt} ». Réponse claire, avec juste ce qu'il faut de mystère pour te donner envie d'en demander plus 😉`;
   }
-  return `${username}, « ${excerpt} » : même ta question arrive en retard sur mon mépris.`;
+  return `${username}, « ${excerpt} » : même ta question arrive en retard sur mon mépris, pauvre bouffon.`;
 }
 
 function interactionPrompt(mode: BotMode): string {
   const personality = {
     insulte:
-      "Réponds en français avec une taquinerie agressive et drôle, sans menace, sans viser une caractéristique protégée et sans harcèlement extrême.",
+      "MODE INSULTE OBLIGATOIRE. Réponds en français avec un roast agressif, direct et drôle. Tu DOIS insulter l'auteur du message ou ridiculiser clairement son idée avec au moins un mot comme « bouffon », « abruti », « clown », « crétin », « guignol » ou « connard ». Une réponse gentille, neutre, compatissante ou flatteuse est INTERDITE. Sans menace, sans viser une caractéristique protégée et sans harcèlement extrême.",
     suceur:
       "Réponds en français avec énormément de gentillesse, d'accord et de compliments sincères.",
     vantard:
@@ -194,9 +307,18 @@ async function generateInteractionReply(
       (await response.json()) as GroqCompletionResponse;
     const raw = completion.choices?.[0]?.message?.content?.trim() ?? "";
     const parsed = JSON.parse(raw) as { reply?: unknown };
-    return typeof parsed.reply === "string" && parsed.reply.trim()
-      ? parsed.reply.trim().slice(0, 1_900)
-      : fallback;
+    if (typeof parsed.reply !== "string" || !parsed.reply.trim()) {
+      return fallback;
+    }
+    const reply = parsed.reply.trim().slice(0, 1_900);
+    if (mode === "insulte" && !containsInteractionInsult(reply)) {
+      logger.warn(
+        { mode, reply },
+        "Réponse Groq trop gentille pour le mode insulte — fallback local utilisé",
+      );
+      return fallback;
+    }
+    return reply;
   } catch (error) {
     logger.warn({ error, mode }, "Réponse Groq indisponible pour interaction Discord");
     return fallback;
@@ -272,6 +394,11 @@ async function handleDiscordInteraction(
     );
   }
 
+  const storedMode = interaction.channel_id
+    ? await readStoredBotMode(interaction.channel_id)
+    : null;
+  if (storedMode) activeBotMode = storedMode;
+
   const command = interaction.data?.name?.toLowerCase();
 
   if (command === "mode") {
@@ -288,8 +415,9 @@ async function handleDiscordInteraction(
     if (requestedMode) {
       const previousMode = activeBotMode;
       activeBotMode = requestedMode;
+      await persistBotMode(interaction.channel_id!, requestedMode);
       return interactionReply(
-        `Mode changé : **${previousMode}** → **${activeBotMode}**. Il sera utilisé par les prochaines commandes tant que cette instance Vercel reste active.`,
+        `Mode changé : **${previousMode}** → **${activeBotMode}**. Le choix est enregistré pour ce salon et sera utilisé par les prochaines commandes.`,
       );
     }
     return interactionReply(
