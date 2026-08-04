@@ -52,7 +52,7 @@ Le bot répond d'abord réellement à la question, puis ajoute un ton de flirt s
 - `POST /api/discord/interactions` — endpoint à configurer dans Discord
 - `POST /api/discord/register` — enregistre les commandes slash avec `X-Register-Secret`
 
-Vercel ne maintient pas de connexion Gateway Discord permanente. En mode Vercel-only, le bot répond aux commandes slash `/bot` et `/mode`; il ne lit pas automatiquement les messages normaux.
+Vercel ne maintient pas de connexion Gateway Discord permanente. En mode Vercel-only, le bot répond aux commandes slash `/bot`, `/mode` et `/panel`, ainsi qu'aux clics et soumissions du panel ; il ne lit pas automatiquement les messages normaux.
 
 Configuration :
 
@@ -61,6 +61,7 @@ Configuration :
 3. Ajoute un secret aléatoire de ton choix dans `DISCORD_REGISTER_SECRET`.
 4. Pour enregistrer les commandes, appelle `POST https://TON-DOMAINE-VERCEL/api/discord/register` avec l'en-tête `X-Register-Secret: ton-secret`. Ajoute `DISCORD_GUILD_ID` temporairement pour une installation immédiate dans un serveur; sans lui, les commandes sont globales et leur propagation peut prendre du temps.
 5. Utilise ensuite `/bot message: ta question` dans `ALLOWED_CHANNEL_ID`. Un administrateur peut utiliser `/mode` ou `/mode mode: adulte`; le mode choisi est enregistré dans le sujet du salon sous la forme `[bot-mode:adulte]`, puis relu par chaque interaction, même après un redémarrage Vercel. Le bot doit avoir la permission **Gérer le salon** pour mettre à jour ce sujet. Si cette permission manque, utilise l'option `mode` directement dans `/bot`.
+6. Un administrateur peut utiliser `/panel` dans le salon autorisé pour créer ou mettre à jour le message panel et l'épingler. Le bouton **Poser une question** ouvre une modale avec un message obligatoire et un style facultatif (`insulte`, `suceur`, `vantard` ou `adulte`). Si le style est vide, le panel utilise le mode défini par `/mode`. Le bot doit pouvoir **Voir le salon**, **Envoyer des messages**, **Lire l'historique des messages** et **Gérer les messages** pour installer et épingler le panel.
 
 ## Architecture historique
 
@@ -82,3 +83,4 @@ _Populate as you build — explicit user instructions worth remembering across s
 - Le bot ne démarre pas si `DISCORD_BOT_TOKEN` ou `ALLOWED_CHANNEL_ID` est absent (warning loggé, pas de crash)
 - Si toutes les clés Groq sont rate-limitées, le bot utilise des fallbacks locaux (pas d'arrêt)
 - `BOT_MODE` sert de mode initial ; `/mode mode:<mode>` persiste ensuite le choix dans le sujet du salon autorisé. Le bot doit avoir la permission Discord **Gérer le salon** pour cette persistance.
+- Le panel est installé avec `/panel`; ses clics et soumissions de modale passent par le même webhook Discord signé que `/bot` et `/mode`.

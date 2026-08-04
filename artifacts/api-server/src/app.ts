@@ -17,12 +17,21 @@ let activeBotMode: BotMode =
   parseInteractionMode(process.env["BOT_MODE"]) ?? "insulte";
 const DISCORD_PING = 1;
 const DISCORD_APPLICATION_COMMAND = 2;
+const DISCORD_MESSAGE_COMPONENT = 3;
+const DISCORD_MODAL_SUBMIT = 5;
 const DISCORD_EPHEMERAL = 1 << 6;
 const DISCORD_ADMINISTRATOR = 1n << 3n;
+const DISCORD_COMPONENT_ACTION_ROW = 1;
+const DISCORD_COMPONENT_BUTTON = 2;
+const DISCORD_COMPONENT_TEXT_INPUT = 4;
+const DISCORD_BUTTON_PRIMARY = 1;
 const DISCORD_PUBLIC_KEY_PREFIX = Buffer.from(
   "302a300506032b6570032100",
   "hex",
 );
+const PANEL_BUTTON_CUSTOM_ID = "bot_panel:open";
+const PANEL_MODAL_CUSTOM_ID = "bot_panel:submit";
+const PANEL_MESSAGE_MARKER = "\u200bbot-panel-v1\u200b";
 
 type DiscordInteraction = {
   type?: number;
@@ -32,7 +41,19 @@ type DiscordInteraction = {
   token?: string;
   data?: {
     name?: string;
+    custom_id?: string;
+    component_type?: number;
     options?: Array<{ name?: string; value?: unknown }>;
+    components?: Array<{
+      type?: number;
+      custom_id?: string;
+      value?: unknown;
+      components?: Array<{
+        type?: number;
+        custom_id?: string;
+        value?: unknown;
+      }>;
+    }>;
   };
   member?: {
     permissions?: string;
@@ -43,8 +64,16 @@ type DiscordInteraction = {
 
 type DiscordInteractionResponse =
   | { type: 1 }
+  | { type: 4; data: { content: string; flags?: number; components?: unknown[] } }
   | { type: 5; data?: { flags?: number } }
-  | { type: 4; data: { content: string; flags?: number } };
+  | {
+      type: 9;
+      data: {
+        custom_id: string;
+        title: string;
+        components: unknown[];
+      };
+    };
 
 type FetchResponse = {
   ok: boolean;
@@ -71,6 +100,20 @@ function getInteractionOption(
 ): unknown {
   return interaction.data?.options?.find((option) => option.name === name)
     ?.value;
+}
+
+function getModalInput(
+  interaction: DiscordInteraction,
+  customId: string,
+): string {
+  for (const row of interaction.data?.components ?? []) {
+    for (const component of row.components ?? []) {
+      if (component.custom_id === customId && typeof component.value === "string") {
+        return component.value;
+      }
+    }
+  }
+  return "";
 }
 
 function getInteractionUsername(interaction: DiscordInteraction): string {
@@ -161,6 +204,142 @@ async function persistBotMode(
     );
     return false;
   }
+}
+
+function panelMessagePayload(): {
+  content: string;
+  components: unknown[];
+  allowed_mentions: { parse: string[] };
+} {
+  return {
+    content: [
+      PANEL_MESSAGE_MARKER,
+      "**Bot Mode Selector**",
+      "Clique sur le bouton ci-dessous pour poser une question au bot.",
+      "Le style est facultatif : s'il est vide, le mode défini par `/mode` sera utilisé.",
+    ].join("\n"),
+    components: [
+      {
+        type: DISCORD_COMPONENT_ACTION_ROW,
+        components: [
+          {
+            type: DISCORD_COMPONENT_BUTTON,
+            style: DISCORD_BUTTON_PRIMARY,
+            label: "Poser une question",
+            custom_id: PANEL_BUTTON_CUSTOM_ID,
+          },
+        ],
+      },
+    ],
+    allowed_mentions: { parse: [] },
+  };
+}
+
+function panelModalResponse(): DiscordInteractionResponse {
+  return {
+    type: 9,
+    data: {
+      custom_id: PANEL_MODAL_CUSTOM_ID,
+      title: "Question au bot",
+      components: [
+        {
+          type: DISCORD_COMPONENT_ACTION_ROW,
+          components: [
+            {
+              type: DISCORD_COMPONENT_TEXT_INPUT,
+              custom_id: "message",
+              style: 2,
+              label: "Ton message",
+              placeholder: "Écris ta question ou ton message...",
+              required: true,
+              max_length: 4_000,
+            },
+          ],
+        },
+        {
+          type: DISCORD_COMPONENT_ACTION_ROW,
+          components: [
+            {
+              type: DISCORD_COMPONENT_TEXT_INPUT,
+              custom_id: "mode",
+              style: 1,
+              label: "Style de réponse (facultatif)",
+              placeholder: "insulte, suceur, vantard ou adulte",
+              required: false,
+              max_length: 20,
+            },
+          ],
+        },
+      ],
+    },
+  };
+}
+
+async function ensurePanelMessage(channelId: string): Promise<string> {
+  const headers = getDiscordBotHeaders();
+  if (!headers) {
+    throw new Error("DISCORD_BOT_TOKEN est requis pour installer le panel");
+  }
+
+  const payload = panelMessagePayload();
+  let panelMessageId: string | null = null;
+  const pinsResponse = (await globalThis.fetch(
+    `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/pins`,
+    {
+      headers,
+      signal: AbortSignal.timeout(1_000),
+    },
+  )) as unknown as FetchResponse;
+
+  if (pinsResponse.ok) {
+    const pinnedMessages = (await pinsResponse.json()) as Array<{
+      id?: string;
+      content?: string;
+    }>;
+    panelMessageId =
+      pinnedMessages.find((message) =>
+        message.content?.includes(PANEL_MESSAGE_MARKER),
+      )?.id ?? null;
+  }
+
+  const messageResponse = (await globalThis.fetch(
+    panelMessageId
+      ? `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/messages/${encodeURIComponent(panelMessageId)}`
+      : `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/messages`,
+    {
+      method: panelMessageId ? "PATCH" : "POST",
+      headers,
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(1_500),
+    },
+  )) as unknown as FetchResponse;
+  if (!messageResponse.ok) {
+    throw new Error(
+      `Discord panel message failed (${messageResponse.status}): ${await messageResponse.text()}`,
+    );
+  }
+
+  const message = (await messageResponse.json()) as { id?: string };
+  panelMessageId = message.id ?? panelMessageId;
+  if (!panelMessageId) {
+    throw new Error("Discord n'a pas renvoyé l'identifiant du panel");
+  }
+
+  const pinResponse = (await globalThis.fetch(
+    `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/pins/${encodeURIComponent(panelMessageId)}`,
+    {
+      method: "PUT",
+      headers,
+      signal: AbortSignal.timeout(1_000),
+    },
+  )) as unknown as FetchResponse;
+  if (!pinResponse.ok) {
+    throw new Error(
+      `Discord panel pin failed (${pinResponse.status}): ${await pinResponse.text()}`,
+    );
+  }
+
+  return panelMessageId;
 }
 
 type DiscordChannelMessage = {
@@ -339,7 +518,11 @@ async function handleDiscordInteraction(
     return { type: 1 };
   }
 
-  if (interaction.type !== DISCORD_APPLICATION_COMMAND) {
+  if (
+    interaction.type !== DISCORD_APPLICATION_COMMAND &&
+    interaction.type !== DISCORD_MESSAGE_COMPONENT &&
+    interaction.type !== DISCORD_MODAL_SUBMIT
+  ) {
     return interactionReply("Type d'interaction Discord non pris en charge.", true);
   }
 
@@ -361,6 +544,51 @@ async function handleDiscordInteraction(
     ? await readStoredBotMode(interaction.channel_id)
     : null;
   if (storedMode) activeBotMode = storedMode;
+
+  if (interaction.type === DISCORD_MESSAGE_COMPONENT) {
+    if (interaction.data?.custom_id === PANEL_BUTTON_CUSTOM_ID) {
+      return panelModalResponse();
+    }
+    return interactionReply("Ce bouton n'est plus disponible.", true);
+  }
+
+  if (interaction.type === DISCORD_MODAL_SUBMIT) {
+    if (interaction.data?.custom_id !== PANEL_MODAL_CUSTOM_ID) {
+      return interactionReply("Cette fenêtre n'est plus disponible.", true);
+    }
+
+    const message = getModalInput(interaction, "message").trim();
+    if (!message) {
+      return interactionReply("Le message est obligatoire.", true);
+    }
+
+    const rawMode = getModalInput(interaction, "mode").trim();
+    const requestedMode = rawMode ? parseInteractionMode(rawMode) : null;
+    if (rawMode && !requestedMode) {
+      return interactionReply(
+        `Style invalide. Utilise uniquement : ${BOT_MODES.map((mode) => `\`${mode}\``).join(", ")}.`,
+        true,
+      );
+    }
+
+    const username = getInteractionUsername(interaction);
+    const resolvedMessage = await resolveInteractionMentions(
+      message,
+      interaction.guild_id,
+    );
+    const recentConversation = await getRecentInteractionConversation(
+      interaction.channel_id!,
+      username,
+      resolvedMessage,
+    );
+    const reply = await generateInteractionReply(
+      username,
+      resolvedMessage,
+      requestedMode ?? activeBotMode,
+      recentConversation,
+    );
+    return interactionReply(reply);
+  }
 
   const command = interaction.data?.name?.toLowerCase();
 
@@ -392,6 +620,30 @@ async function handleDiscordInteraction(
       `Mode actuel : **${activeBotMode}**. Modes disponibles : ${BOT_MODES.map((mode) => `\`${mode}\``).join(", ")}.`,
       true,
     );
+  }
+
+  if (command === "panel") {
+    const permissions = BigInt(interaction.member?.permissions ?? "0");
+    if ((permissions & DISCORD_ADMINISTRATOR) === 0n) {
+      return interactionReply(
+        "Seuls les administrateurs peuvent installer ou mettre à jour le panel.",
+        true,
+      );
+    }
+
+    try {
+      const panelMessageId = await ensurePanelMessage(interaction.channel_id!);
+      return interactionReply(
+        `Panel installé et épinglé dans ce salon. (message \`${panelMessageId}\`)`,
+        true,
+      );
+    } catch (error) {
+      logger.error({ error }, "Échec installation du panel Discord");
+      return interactionReply(
+        "Impossible d'installer le panel. Vérifie que le bot peut envoyer des messages et épingler des messages dans ce salon.",
+        true,
+      );
+    }
   }
 
   if (command !== "bot") {
@@ -459,6 +711,10 @@ const DISCORD_COMMANDS = [
         choices: BOT_MODES.map((mode) => ({ name: mode, value: mode })),
       },
     ],
+  },
+  {
+    name: "panel",
+    description: "Installer ou mettre à jour le panel du bot",
   },
 ];
 
