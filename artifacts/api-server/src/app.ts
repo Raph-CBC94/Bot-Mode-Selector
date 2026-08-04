@@ -234,9 +234,6 @@ function panelMessagePayload(): {
             inline: false,
           },
         ],
-        footer: {
-          text: "Le panel reste automatiquement en bas du salon",
-        },
       },
     ],
     components: [
@@ -305,22 +302,22 @@ async function ensurePanelMessage(channelId: string): Promise<string> {
 
   const payload = panelMessagePayload();
   let panelMessageId: string | null = null;
-  const pinsResponse = (await globalThis.fetch(
-    `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/pins`,
+  const messagesResponse = (await globalThis.fetch(
+    `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/messages?limit=100`,
     {
       headers,
-      signal: AbortSignal.timeout(1_000),
+      signal: AbortSignal.timeout(1_200),
     },
   )) as unknown as FetchResponse;
 
-  if (pinsResponse.ok) {
-    const pinnedMessages = (await pinsResponse.json()) as Array<{
+  if (messagesResponse.ok) {
+    const recentMessages = (await messagesResponse.json()) as Array<{
       id?: string;
       content?: string;
       embeds?: Array<{ title?: string }>;
     }>;
     panelMessageId =
-      pinnedMessages.find((message) =>
+      recentMessages.find((message) =>
         message.content?.includes(PANEL_MESSAGE_MARKER) ||
         message.embeds?.some((embed) => embed.title === "Bot Mode Selector"),
       )?.id ?? null;
@@ -361,20 +358,6 @@ async function ensurePanelMessage(channelId: string): Promise<string> {
         `Discord panel delete failed (${deleteResponse.status}): ${await deleteResponse.text()}`,
       );
     }
-  }
-
-  const pinResponse = (await globalThis.fetch(
-    `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/pins/${encodeURIComponent(newPanelMessageId)}`,
-    {
-      method: "PUT",
-      headers,
-      signal: AbortSignal.timeout(1_000),
-    },
-  )) as unknown as FetchResponse;
-  if (!pinResponse.ok) {
-    throw new Error(
-      `Discord panel pin failed (${pinResponse.status}): ${await pinResponse.text()}`,
-    );
   }
 
   return newPanelMessageId;
@@ -728,13 +711,13 @@ async function handleDiscordInteraction(
     try {
       const panelMessageId = await ensurePanelMessage(interaction.channel_id!);
       return interactionReply(
-        `Panel installé et épinglé dans ce salon. (message \`${panelMessageId}\`)`,
+        `Panel installé en bas de ce salon. (message \`${panelMessageId}\`)`,
         true,
       );
     } catch (error) {
       logger.error({ error }, "Échec installation du panel Discord");
       return interactionReply(
-        "Impossible d'installer le panel. Vérifie que le bot peut envoyer des messages et épingler des messages dans ce salon.",
+        "Impossible d'installer le panel. Vérifie que le bot peut voir le salon, lire l'historique et envoyer des messages.",
         true,
       );
     }
